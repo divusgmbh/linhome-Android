@@ -8,7 +8,7 @@
 mtu=1300
 force_ice_disablement=1
 firewall_policy=0
-stun_server=stun.linphone.org
+stun_server=sip.divus.eu
 
 [sip]
 guess_hostname=1
@@ -33,11 +33,11 @@ enabled=1
 
 
 [assistant]
-xmlrpc_url=https://subscribe.linphone.org/flexisip-account-manager/linhome/xmlrpc.php
+xmlrpc_url=https://sip.divus.eu/xmlrpc/xmlrpc.php
 ; MD5 / SHA-256
 password_algo=MD5
-domain=sip.linhome.org
-freesip_url=https://subscribe.linhome.org/login
+domain=sip.divus.eu
+freesip_url=
 
 [rtp]
 audio_rtp_port=-1
