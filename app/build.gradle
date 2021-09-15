@@ -79,7 +79,7 @@ android {
     compileSdkVersion 29
 
     defaultConfig {
-        applicationId "org.linhome"
+        applicationId "eu.divus.videophone_mobile"
         minSdkVersion 23
         targetSdkVersion 29
         versionCode 25

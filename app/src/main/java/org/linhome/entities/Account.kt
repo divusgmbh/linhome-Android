@@ -96,7 +96,7 @@ object Account {
                 pushGw.enableRegister(true)
                 pushGw.enablePublish(false)
                 pushGw.expires = 31536000
-                pushGw.serverAddr = "sips:${responseValues.get(1)};transport=tls"
+                pushGw.serverAddr = "sips:${responseValues.get(1)};transport=udp"
                 pushGw.setRoutes(arrayOf(pushGw.serverAddr))
                 pushGw.isPushNotificationAllowed = true
 
