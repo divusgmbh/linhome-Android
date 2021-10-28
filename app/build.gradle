@@ -10,9 +10,9 @@ repositories {
     maven {
         url file(LinphoneSdkBuildDir + '/maven_repository/')
     }
-    maven {
-        url "https://linphone.org/maven_repository"
-    }
+    // maven {
+    //     url "https://linphone.org/maven_repository"
+    // }
     maven {
         url file('../linphone-sdk/')
     }
@@ -160,7 +160,7 @@ dependencies {
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
-    implementation "org.linphone:linphone-sdk-android:4.5.0"
+    implementation "org.linphone:linphone-sdk-android:5.1.0-alpha.129+ca5f5d3"
     implementation "org.permissionsdispatcher:permissionsdispatcher:4.7.0"
     kapt "org.permissionsdispatcher:permissionsdispatcher-processor:4.7.0"
     implementation "com.google.android.material:material:1.2.1"
