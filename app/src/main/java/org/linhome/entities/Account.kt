@@ -87,7 +87,7 @@ object Account {
 
 
         val xmlRpcSession = corePreferences.xmlRpcServerUrl?.let {
-            LinhomeApplication.coreContext.core.createXmlRpcSession(
+            coreContext.core.createXmlRpcSession(
                 it
             )
         }
