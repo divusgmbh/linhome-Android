@@ -121,3 +121,14 @@ The goal of this agreement to grant us peaceful exercise of our rights on the li
 - Values allowed for Account type are : device_audio_intercom|device_video_intercom|device_security_camera|device_internal_unit
 - Values allowed for actions are : action_open_door| action_open_gate | action_lightup | action_unlock
 
+
+# INSTRUCTIONS AF
+1) GIT-clone linphone-Android
+2) in same folder, GIT-clone linphone-sdk
+3) inside linphone-sdk, execute: git submodule update --init --recursive
+4) inside linphone-sdk, copy folder "build" as found in: \\192.168.5.21\divus\Temp\da\linhome
+5) inside linphone-Android, GIT-clone linphone-shared-themes
+
+# OBSERVATIONS AF (2021-11-24)
+- Currently branch 5.0.3-divus is used, NOT master
+- changes in linphone-shared-themes will be zipped to src/main/assets by task "zipTheme"
