@@ -5,3 +5,4 @@ build
 builds
 app/src/main/assets/linhome.zip
 app/build
+local.properties

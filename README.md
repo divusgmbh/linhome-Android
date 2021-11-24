@@ -111,3 +111,18 @@ In order to submit a patch for inclusion in linphone's source code:
 2. Fill out and send us an email with the link of pullrequest and the [Contributor Agreement](http://www.belledonne-communications.com/downloads/Belledonne_communications_CA.pdf) for your patch to be included in the git tree.
 
 The goal of this agreement to grant us peaceful exercise of our rights on the linphone source code, while not losing your rights on your contribution.
+
+
+
+
+
+# INSTRUCTIONS AF
+1) GIT-clone linphone-Android
+2) in same folder, GIT-clone linphone-sdk
+3) inside linphone-sdk, execute: git submodule update --init --recursive
+4) inside linphone-sdk, copy folder "build" as found in: \\192.168.5.21\divus\Temp\da\linhome
+5) inside linphone-Android, GIT-clone linphone-shared-themes
+
+# OBSERVATIONS AF (2021-11-24)
+- Currently branch 5.0.3-divus is used, NOT master
+- changes in linphone-shared-themes will be zipped to src/main/assets by task "zipTheme"
