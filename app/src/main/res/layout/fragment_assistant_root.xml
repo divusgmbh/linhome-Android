@@ -76,6 +76,7 @@
         app:layout_constraintTop_toBottomOf="@id/use"
         primary='@{false}'
         text='@{"assistant_use_sip_account"}'
+        android:visibility="gone"
         />
 
     <org.linhome.ui.widgets.LRoundRectButton

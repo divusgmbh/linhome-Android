@@ -41,11 +41,18 @@ class AboutFragment : Fragment() {
         val binding = FragmentAboutBinding.inflate(inflater, container, false)
         binding.coreContext = LinhomeApplication.coreContext
 
-
         binding.licence.setOnClickListener {
             val browserIntent = Intent(
                 Intent.ACTION_VIEW,
                 Uri.parse(Texts.get("license_link"))
+            )
+            startActivity(browserIntent)
+        }
+
+        binding.root.linhome_link.setOnClickListener {
+            val browserIntent = Intent(
+                Intent.ACTION_VIEW,
+                Uri.parse(Texts.get("about_link"))
             )
             startActivity(browserIntent)
         }

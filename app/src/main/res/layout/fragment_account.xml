@@ -76,9 +76,9 @@
                 app:layout_constraintBottom_toTopOf="@id/delete_linhome_account"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                android:visibility="@{model.account != null ? View.VISIBLE : View.GONE}"
                 primary='@{false}'
                 text='@{"change_password"}'
+                android:visibility="gone"
                 />
 
 
@@ -93,9 +93,9 @@
                 app:layout_constraintBottom_toTopOf="@id/disconnect"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                android:visibility="@{model.account != null ? View.VISIBLE : View.GONE}"
                 primary='@{false}'
                 text='@{"delete_account"}'
+                android:visibility="gone"
                 />
 
 
