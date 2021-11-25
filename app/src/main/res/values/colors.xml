@@ -6,7 +6,7 @@
 
     <!-- IMPORTANT - those are the minimum set that need to be imported from the theme.xml no more or less needed -->
 
-    <color name="color_a">#ffff5e00</color>
+    <color name="color_a">#ff0074d6</color>
     <color name="color_b">#444444</color>
     <color name="color_c">#ffffff</color>
 

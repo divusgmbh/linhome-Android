@@ -96,11 +96,10 @@
             android:id="@+id/linhome_link"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:autoLink="web"
             android:layout_marginTop="38dp"
             android:layout_below="@+id/sdkversion"
             style='@{"about_link"}'
-            text='@{"about_link"}'
+            text='@{"about_text"}'
             />
 
         <TextView
