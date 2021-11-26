@@ -83,7 +83,7 @@ android {
     defaultConfig {
         applicationId "eu.divus.videophone_mobile"
         minSdkVersion 23
-        targetSdkVersion 31
+        targetSdkVersion 29
         versionCode 26
         versionName "${project.version}"
 
