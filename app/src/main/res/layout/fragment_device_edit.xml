@@ -79,6 +79,7 @@
                 style='@{"section_title"}'
                 app:layout_constraintVertical_chainStyle="spread"
                 text='@{"device_type_select"}'
+                android:visibility="gone"
                 />
 
             <org.linhome.ui.widgets.LSpinner
@@ -93,6 +94,7 @@
                 listener="@{model.deviceTypeListener}"
                 initialIndex="@{model.deviceType}"
                 items="@{model.availableDeviceTypes}"
+                android:visibility="gone"
              />
 
             <TextView
