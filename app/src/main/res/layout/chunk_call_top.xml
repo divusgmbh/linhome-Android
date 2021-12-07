@@ -35,14 +35,6 @@
             src='@{"others/linhome_icon"}'
             />
 
-        <ImageView
-            android:layout_width="62dp"
-            android:layout_height="match_parent"
-            android:layout_marginStart="12dp"
-            android:scaleType="centerInside"
-            android:src="@drawable/ic_linhome_icon"
-            src='@{"others/linhome_text"}'
-            />
         </LinearLayout>
 
 
