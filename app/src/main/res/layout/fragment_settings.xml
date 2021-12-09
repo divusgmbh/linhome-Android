@@ -71,13 +71,16 @@
                 subsection="@{true}"
                 />
 
+
             <include
                 android:id="@+id/send_logs"
                 layout="@layout/settings_widget_basic"
                 title='@{model.getText("send_logs")}'
                 listener="@{view.sendLogsListener}"
                 subsection="@{true}"
+                android:visibility="gone"
                 />
+
 
         </LinearLayout>
 
