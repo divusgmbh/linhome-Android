@@ -107,6 +107,7 @@
                     style='@{"section_title"}'
                     app:layout_constraintVertical_chainStyle="spread"
                     text='@{"device_type_select"}'
+                    android:visibility="gone"
                     />
 
                 <org.linhome.ui.widgets.LSpinner
@@ -121,6 +122,7 @@
                     listener="@{model.deviceTypeListener}"
                     initialIndex="@{model.deviceType}"
                     items="@{model.availableDeviceTypes}"
+                    android:visibility="gone"
                     />
 
 
@@ -183,9 +185,9 @@
                 android:id="@+id/addaction"
                 android:clickable="true"
                 android:focusable="true"
-                android:layout_width="220dp"
+                android:layout_width="match_parent"
                 android:layout_height="40dp"
-                android:layout_marginTop="20dp"
+                android:layout_margin="20dp"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/actions"
                 app:layout_constraintBottom_toTopOf="parent"
