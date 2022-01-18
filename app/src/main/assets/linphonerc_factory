@@ -8,7 +8,6 @@
 mtu=1300
 force_ice_disablement=1
 firewall_policy=0
-stun_server=sip.divus.eu
 
 [sip]
 guess_hostname=1
@@ -18,6 +17,7 @@ auto_answer_replacing_calls=1
 ping_with_options=0
 use_cpim=1
 incoming_calls_early_media=1
+media_encryption=srtp
 
 [sound]
 #remove this property for any application that is not Linphone public version itself
@@ -37,7 +37,7 @@ xmlrpc_url=https://sip.divus.eu/xmlrpc/xmlrpc.php
 ; MD5 / SHA-256
 password_algo=MD5
 domain=sip.divus.eu
-freesip_url=
+freesip_url=https://sip.divus.eu/login
 
 [rtp]
 audio_rtp_port=-1
