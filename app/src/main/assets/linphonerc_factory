@@ -16,7 +16,6 @@ auto_net_state_mon=1
 auto_answer_replacing_calls=1
 ping_with_options=0
 use_cpim=1
-media_encryption=srtp
 
 [sound]
 #remove this property for any application that is not Linphone public version itself
