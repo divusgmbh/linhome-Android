@@ -34,6 +34,7 @@
         text='@{"assistant_welcome_subtitle"}' />
 
     <LinearLayout
+        android:id="@+id/buttons"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="vertical"
@@ -85,6 +86,28 @@
             android:visibility="invisible"/>
 
     </LinearLayout>
+
+    <TextView
+        android:id="@+id/register_hint_text"
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="33dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/buttons"
+        style='@{"view_sub_title"}'
+        text='@{"register_hint_text"}' />
+
+    <TextView
+        android:id="@+id/register_hint_url"
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/register_hint_text"
+        style='@{"view_sub_title"}'
+        text='@{"register_hint_url"}' />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>
