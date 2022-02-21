@@ -78,7 +78,6 @@
                 title='@{model.getText("send_logs")}'
                 listener="@{view.sendLogsListener}"
                 subsection="@{true}"
-                android:visibility="gone"
                 />
 
 
