@@ -29,7 +29,8 @@ port=443
 
 [misc]
 version_check_url_root=https://sip.divus.eu/linhomereleases
-log_collection_upload_server_url=https://sip.divus.eu/videophone_mobile/logs
+log_collection_upload_server_url=https://sip.divus.eu/videophone_mobile/logs/upload
+#log_collection_upload_server_url=https://www.linphone.org:444/lft.php
 history_max_size=100
 
 
