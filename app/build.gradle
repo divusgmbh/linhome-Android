@@ -76,13 +76,13 @@ project.tasks['preBuild'].dependsOn 'getGitVersion'
 
 
 android {
-    compileSdkVersion 29
+    compileSdkVersion 32
 
     defaultConfig {
         applicationId "eu.divus.videophone_mobile"
         minSdkVersion 23
-        targetSdkVersion 29
-        versionCode 38
+        targetSdkVersion 32
+        versionCode 39
         versionName "${project.version}"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -160,7 +160,7 @@ dependencies {
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
-    implementation "org.linphone:linphone-sdk-android:5.1.0-divus.21113151149"
+    implementation "org.linphone:linphone-sdk-android:5.1.0-divus.2202521154"
     implementation "org.permissionsdispatcher:permissionsdispatcher:4.7.0"
     kapt "org.permissionsdispatcher:permissionsdispatcher-processor:4.7.0"
     implementation "com.google.android.material:material:1.2.1"
