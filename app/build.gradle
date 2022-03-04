@@ -83,9 +83,9 @@ android {
     defaultConfig {
         applicationId "org.linhome"
         minSdkVersion 23
-        targetSdkVersion 31
-        versionCode 26
-        versionName "${project.version}"
+        targetSdkVersion 30
+        versionCode 45
+        versionName "1.0.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
