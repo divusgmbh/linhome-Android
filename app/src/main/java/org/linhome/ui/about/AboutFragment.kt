@@ -58,6 +58,14 @@ class AboutFragment : Fragment() {
             startActivity(browserIntent)
         }
 
+        binding.root.source_code_link.setOnClickListener {
+            val browserIntent = Intent(
+                Intent.ACTION_VIEW,
+                Uri.parse(Texts.get("source_code_link"))
+            )
+            startActivity(browserIntent)
+        }
+
         return binding.root
     }
 }

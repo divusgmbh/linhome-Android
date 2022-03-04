@@ -87,6 +87,14 @@
                 style='@{"about_link"}' />
 
             <TextView
+                android:id="@+id/source_code_link"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="10dp"
+                text='@{"source_code_text"}'
+                style='@{"about_link"}' />
+
+            <TextView
                 android:id="@+id/licence"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
