@@ -16,8 +16,7 @@
 
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <!-- Needed to shared downloaded files if setting is on -->
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 
     <!-- Both permissions below are for contacts sync account -->
     <uses-permission android:name="android.permission.AUTHENTICATE_ACCOUNTS" />
@@ -43,7 +42,8 @@
             android:label="@string/app_name"
             android:screenOrientation="sensor"
             android:windowSoftInputMode="adjustResize"
-            android:theme="@style/LinhomeTheme">
+            android:theme="@style/LinhomeTheme"
+            android:exported="false" >
             <nav-graph android:value="@navigation/fragments_graph" />
         </activity>
         <activity
