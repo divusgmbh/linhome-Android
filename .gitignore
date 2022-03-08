@@ -10,3 +10,4 @@ local.properties
 /app/release/app-release.aab
 /app/release/output-metadata.json
 /app/release/linhome-android-release-5.0.0.apk
+app/google-services.json
