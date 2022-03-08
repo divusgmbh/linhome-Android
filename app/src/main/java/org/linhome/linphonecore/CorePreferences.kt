@@ -220,9 +220,13 @@ class CorePreferences constructor(private val context: Context) {
 
     fun encryptedPass(user: String, clearPass: String): String {
         val md = MessageDigest.getInstance(passwordAlgo?.toUpperCase())
+        var hashLength = 32
+        if (passwordAlgo?.toUpperCase().contentEquals("SHA-256")) {
+            hashLength = 64
+        }
         return BigInteger(
             1,
             md.digest(("${user}:${loginDomain}:${clearPass}").toByteArray())
-        ).toString(16).padStart(32, '0')
+        ).toString(16).padStart(hashLength, '0')
     }
 }
