@@ -29,8 +29,8 @@ cd linhome-Android
 git checkout 5.0.3-divus
 sed -i "s@^LinphoneSdkBuildDir=.*@LinphoneSdkBuildDir=$(realpath $(pwd)/../linphone-sdk/build)@" gradle.properties
 sed -i "s@['\"]org.linphone:linphone-sdk-android:.*@\"org.linphone:linphone-sdk-android:${OUT_MAVEN_VERSION}\"@" app/build.gradle
-# do not forget to update keystore.properties
-./gradlew assembleRelease
+# do not forget to update keystore.properties if you want to build for release
+./gradlew assembleDebug
 ```
 
 ### License
