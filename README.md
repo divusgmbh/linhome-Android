@@ -12,6 +12,27 @@ The code is released under the terms of the GNU/GPLv3 license.
 
 "DIVUS", "VIDEOPHONE Mobile" and other branding names are trademarks of DIVUS GmbH and if you plan to build the app for redistribution must be replaced in icons, images and labels.
 
+### DIVUS VIDEOPHONE Mobile build
+
+Once you have built `linphone-sdk`, you can procced building the app following the instructions listed below.
+
+As an example:
+
+```
+cd linphone-sdk
+GIT_TAG="$(git describe)"
+OUT_MAVEN_VERSION="$(echo "$GIT_TAG" | rev | sed s/g-/+/ | sed s/-/./ | rev)"
+cd ..
+git clone https://github.com/divusgmbh/linhome-shared-themes.git
+git clone https://github.com/divusgmbh/linhome-Android.git
+cd linhome-Android
+git checkout 5.0.3-divus
+sed -i "s@^LinphoneSdkBuildDir=.*@LinphoneSdkBuildDir=$(realpath $(pwd)/../linphone-sdk/build)@" gradle.properties
+sed -i "s@['\"]org.linphone:linphone-sdk-android:.*@\"org.linphone:linphone-sdk-android:${OUT_MAVEN_VERSION}\"@" app/build.gradle
+# do not forget to update keystore.properties
+./gradlew assembleRelease
+```
+
 ### License
 
 Copyright © Belledonne Communications
