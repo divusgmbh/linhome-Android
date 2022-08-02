@@ -29,11 +29,6 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import kotlinx.android.synthetic.main.fragment_about.view.*
-import kotlinx.android.synthetic.main.fragment_assistant_create_linhome.view.*
-import kotlinx.android.synthetic.main.fragment_assistant_create_linhome.view.create
-import kotlinx.android.synthetic.main.fragment_assistant_root.view.*
-import kotlinx.android.synthetic.main.widget_round_rect_button.view.*
 import org.linhome.GenericFragment
 import org.linhome.R
 import org.linhome.customisation.Texts
@@ -62,8 +57,8 @@ class AssistantRootFragment : GenericFragment() {
         binding.remote.setOnClickListener {
             navigateToCompotent(R.id.navigation_assistant_remote_root)
         }
-        binding.root.register_hint_url.paintFlags = binding.root.register_hint_url.paintFlags or Paint.UNDERLINE_TEXT_FLAG
-        binding.root.register_hint_url.setOnClickListener {
+        binding.register_hint_url.paintFlags = binding.register_hint_url.paintFlags or Paint.UNDERLINE_TEXT_FLAG
+        binding.register_hint_url.setOnClickListener {
             val browserIntent = Intent(
                 Intent.ACTION_VIEW,
                 Uri.parse(Texts.get("register_hint_link"))

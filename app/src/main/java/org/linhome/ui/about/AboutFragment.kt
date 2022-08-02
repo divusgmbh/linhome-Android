@@ -49,7 +49,7 @@ class AboutFragment : Fragment() {
             startActivity(browserIntent)
         }
 
-        binding.root.linhome_link.setOnClickListener {
+        binding.linhome_link.setOnClickListener {
             val browserIntent = Intent(
                 Intent.ACTION_VIEW,
                 Uri.parse(Texts.get("about_link"))
@@ -57,7 +57,7 @@ class AboutFragment : Fragment() {
             startActivity(browserIntent)
         }
 
-        binding.root.source_code_link.setOnClickListener {
+        binding.source_code_link.setOnClickListener {
             val browserIntent = Intent(
                 Intent.ACTION_VIEW,
                 Uri.parse(Texts.get("source_code_link"))
