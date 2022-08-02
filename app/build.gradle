@@ -11,9 +11,9 @@ repositories {
     maven {
         url file(LinphoneSdkBuildDir + '/maven_repository/')
     }
-    maven {
-        url "https://linphone.org/maven_repository"
-    }
+    //maven {
+    //    url "https://linphone.org/maven_repository"
+    //}
     maven {
         url file('../linphone-sdk/')
     }
@@ -24,7 +24,7 @@ repositories {
 
 task zipTheme(type: Zip){
     println "Zipping theme"
-    from '../linhome-shared-themes/'
+    from '../../linhome-shared-themes/'
     include 'action_types.xml'
     include 'method_types.xml'
     include 'device_types.xml'
@@ -81,7 +81,7 @@ android {
     buildToolsVersion '32.0.0'
 
     defaultConfig {
-        applicationId "org.linhome"
+        applicationId "eu.divus.videophone_mobile"
         minSdkVersion 23
         targetSdkVersion 30
         versionCode 48
