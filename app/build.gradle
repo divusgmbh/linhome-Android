@@ -84,8 +84,8 @@ android {
         applicationId "eu.divus.videophone_mobile"
         minSdkVersion 23
         targetSdkVersion 30
-        versionCode 48
-        versionName "1.0.0"
+        versionCode 49
+        versionName "1.1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
