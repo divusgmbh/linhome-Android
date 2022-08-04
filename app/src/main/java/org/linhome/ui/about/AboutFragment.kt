@@ -49,8 +49,7 @@ class AboutFragment : Fragment() {
             startActivity(browserIntent)
         }
 
-	/* FIXME: reintroduce these resources
-        binding.linhome_link.setOnClickListener {
+        binding.linhomeLink.setOnClickListener {
             val browserIntent = Intent(
                 Intent.ACTION_VIEW,
                 Uri.parse(Texts.get("about_link"))
@@ -58,14 +57,13 @@ class AboutFragment : Fragment() {
             startActivity(browserIntent)
         }
 
-        binding.source_code_link.setOnClickListener {
+        binding.sourceCodeLink.setOnClickListener {
             val browserIntent = Intent(
                 Intent.ACTION_VIEW,
                 Uri.parse(Texts.get("source_code_link"))
             )
             startActivity(browserIntent)
         }
-	*/
 
         return binding.root
     }
