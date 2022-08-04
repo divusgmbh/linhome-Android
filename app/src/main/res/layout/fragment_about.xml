@@ -83,6 +83,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_margin="10dp"
+				android:clickable="true"
+                android:focusable="true"
                 text='@{"about_text"}'
                 style='@{"about_link"}' />
 
@@ -91,6 +93,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_margin="10dp"
+				android:clickable="true"
+                android:focusable="true"
                 text='@{"source_code_text"}'
                 style='@{"about_link"}' />
 

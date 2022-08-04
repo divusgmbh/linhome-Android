@@ -57,7 +57,6 @@ class AssistantRootFragment : GenericFragment() {
         binding.remote.setOnClickListener {
             navigateToCompotent(R.id.navigation_assistant_remote_root)
         }
-        /* FIXME: reintroduce this resource
         binding.register_hint_url.paintFlags = binding.register_hint_url.paintFlags or Paint.UNDERLINE_TEXT_FLAG
         binding.register_hint_url.setOnClickListener {
             val browserIntent = Intent(
@@ -66,7 +65,6 @@ class AssistantRootFragment : GenericFragment() {
             )
             startActivity(browserIntent)
         }
-        */
         return binding.root
     }
 

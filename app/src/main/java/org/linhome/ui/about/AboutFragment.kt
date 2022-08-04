@@ -49,7 +49,6 @@ class AboutFragment : Fragment() {
             startActivity(browserIntent)
         }
 
-	/* FIXME: reintroduce these resources
         binding.linhome_link.setOnClickListener {
             val browserIntent = Intent(
                 Intent.ACTION_VIEW,
@@ -65,7 +64,6 @@ class AboutFragment : Fragment() {
             )
             startActivity(browserIntent)
         }
-	*/
 
         return binding.root
     }
