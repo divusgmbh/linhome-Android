@@ -307,6 +307,8 @@ class NotificationsManager(private val context: Context) {
                 .setWhen(System.currentTimeMillis())
                 .setShowWhen(true)
                 .setOngoing(true)
+                .setNotificationSilent()
+                .setSound(null)
                 .setColor(ContextCompat.getColor(context, R.color.color_a))
                 .build()
     }

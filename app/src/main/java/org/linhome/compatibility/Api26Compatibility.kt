@@ -76,6 +76,7 @@ class Api26Compatibility {
             channel.enableVibration(true)
             channel.enableLights(true)
             channel.setShowBadge(true)
+            channel.setSound(null, null)
             channel.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             notificationManager.createNotificationChannel(channel)
         }
