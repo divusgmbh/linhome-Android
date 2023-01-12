@@ -29,8 +29,7 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             title='@{"audio_codecs"}'
-            entries="@{model.audioCodecs}"
-            android:visibility="gone" />
+            entries="@{model.audioCodecs}" />
 
         <org.linhome.ui.widgets.LExpandableSettingsSection
             android:layout_width="match_parent"
