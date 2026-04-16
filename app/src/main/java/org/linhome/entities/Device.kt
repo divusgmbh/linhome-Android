@@ -32,11 +32,14 @@ import org.linhome.customisation.DeviceTypes
 import org.linhome.store.StorageManager
 import org.linhome.utils.DialogUtil
 import org.linhome.utils.extensions.existsAndIsNotEmpty
+import org.linhome.utils.extensions.md5
 import org.linhome.utils.extensions.xDigitsUUID
 import org.linphone.core.CallParams
+import org.linphone.core.Friend
+import org.linphone.core.Vcard
+import org.linphone.core.tools.Log
 import java.io.File
 import java.io.FileInputStream
-import java.util.*
 
 
 @Parcelize
@@ -46,9 +49,25 @@ data class Device(
     var name: String,
     var address: String,
     var actionsMethodType: String?,
-    var actions: ArrayList<Action>?
+    var actions: ArrayList<Action>?,
+    var isRemotelyProvisionned: Boolean
 ) :
     Parcelable {
+
+    val friend: Friend
+        get() =
+            LinhomeApplication.coreContext.core.createFriend().let { friend ->
+                friend.createVcard(name)
+                friend.vcard?.addExtendedProperty(vcard_device_type_header, type!!)
+                friend.vcard?.addSipAddress(address)
+                friend.vcard?.addExtendedProperty(vcard_action_method_type_header,
+                    deviceActionMethodsTovCardActionMethods().get(actionsMethodType!!)!!)
+                actions?.forEach { it ->
+                    friend.vcard?.addExtendedProperty(vcard_actions_list_header,it.type!! + "~" + it.code!!)
+                }
+                Log.i("[Device] created vCard for device: $name ${friend.vcard?.asVcard4String()}")
+                friend
+            }
 
     var typeIconAsBitmap: Bitmap? = null
 
@@ -57,10 +76,30 @@ data class Device(
         name: String,
         address: String,
         actionsMethodType: String?,
-        actions: ArrayList<Action>?
+        actions: ArrayList<Action>?,
+        isRemotelyProvisionned: Boolean
     ) : this(
-        xDigitsUUID(), type, name, address, actionsMethodType, actions
+        xDigitsUUID(), type, name, address, actionsMethodType, actions, isRemotelyProvisionned
     )
+
+    constructor (card:Vcard, isRemotelyProvisionned:Boolean) : this(card.sipAddresses.component1()?.asStringUriOnly()!!.md5(),
+        card.getExtendedPropertiesValuesByName(vcard_device_type_header).component1(),
+        card.fullName!!,
+        card.sipAddresses.component1()?.asStringUriOnly()!!,
+        vCardActionMethodsToDeviceMethods.get(card.getExtendedPropertiesValuesByName(vcard_action_method_type_header).component1()),
+        ArrayList(),
+        isRemotelyProvisionned)
+    {
+        card.getExtendedPropertiesValuesByName(vcard_actions_list_header).forEach { action ->
+            var actionCleaned = action.replace("\\;","~").replace(";","~")
+            var components = actionCleaned.split("~")
+            if (components.size != 2)  {
+                Log.e("Unable to create action from VCard $action")
+            } else {
+                actions?.add(Action(components.component1(), components.component2()))
+            }
+        }
+    }
 
     init {
         GlobalScope.launch() {
@@ -73,6 +112,7 @@ data class Device(
         get() {
             return File(StorageManager.devicesThumnailPath, "${id}.jpg")
         }
+
 
 
     fun supportsVideo(): Boolean {
@@ -88,8 +128,8 @@ data class Device(
         }
         val params: CallParams? = LinhomeApplication.coreContext.core.createCallParams(null)
         type?.also {
-            params?.enableVideo(DeviceTypes.supportsVideo(it))
-            params?.enableAudio(DeviceTypes.supportsAudio(it))
+            params?.isVideoEnabled = DeviceTypes.supportsVideo(it)
+            params?.isAudioEnabled = DeviceTypes.supportsAudio(it)
         }
         val historyEvent = HistoryEvent()
         params?.recordFile = historyEvent.mediaFileName
@@ -102,7 +142,7 @@ data class Device(
                 )
             }
             if (call != null) {
-                call.enableCamera(false)
+                call.isCameraEnabled = false
                 call.callLog.userData =
                     historyEvent // Retrieved in CallViewModel and bound with call ID when available
             } else
@@ -123,6 +163,19 @@ data class Device(
     }
 
     companion object {
+
+        const val vcard_device_type_header = "X-LINPHONE-ACCOUNT-TYPE"
+        const val vcard_actions_list_header = "X-LINPHONE-ACCOUNT-ACTION"
+        const val vcard_action_method_type_header = "X-LINPHONE-ACCOUNT-DTMF-PROTOCOL"
+        val vCardActionMethodsToDeviceMethods = mapOf( "sipinfo" to "method_dtmf_sip_info","rfc2833" to "method_dtmf_rfc_4733","sipmessage" to "method_sip_message") // Server side method names to local app names
+        fun deviceActionMethodsTovCardActionMethods () : HashMap<String,String> {
+            var result = hashMapOf<String,String>()
+            vCardActionMethodsToDeviceMethods.forEach {
+                result.put(it.value,it.key)
+            }
+            return result
+        }
+
         fun typeIconAsBitmap(type: String?): Bitmap? {
             return type?.let {
                 val svgFile = File(
@@ -145,6 +198,7 @@ data class Device(
                     null
             }
         }
+
     }
 
     fun hasThumbNail(): Boolean {

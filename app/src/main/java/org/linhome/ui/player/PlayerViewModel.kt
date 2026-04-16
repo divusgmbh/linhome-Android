@@ -27,12 +27,13 @@ import org.linhome.LinhomeApplication
 import org.linhome.linphonecore.extensions.historyEvent
 import org.linphone.core.Player
 import org.linphone.core.PlayerListener
+import org.linphone.core.tools.Log
 
 
 class PlayerViewModelFactory(private val callId: String, private val player: Player) :
     ViewModelProvider.NewInstanceFactory() {
     @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel?> create(modelClass: Class<T>): T {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
         return PlayerViewModel(callId, player) as T
     }
 }
@@ -42,11 +43,11 @@ class PlayerViewModel(val callId: String, val player: Player) : ViewModel() {
     val historyEvent =
         LinhomeApplication.coreContext.core.findCallLogFromCallId(callId)?.historyEvent()
     val playing = MutableLiveData(false)
+    val endReached = MutableLiveData(false)
     val position = MutableLiveData(0)
-    val resetEvent = MutableLiveData(false)
-    val seekPosition = MutableLiveData(0)
-
-    var targetSeek: Int = 0
+    val trackingAllowed = MutableLiveData(false)
+    val userTracking = MutableLiveData(false)
+    val userTrackingPosition = MutableLiveData(0)
 
     val duration: Int
         get() {
@@ -56,15 +57,14 @@ class PlayerViewModel(val callId: String, val player: Player) : ViewModel() {
 
     private val listener = PlayerListener {
         playing.value = false
-        resetEvent.value = true
-        targetSeek = 0
-        seek()
+        endReached.value = true
     }
 
     init {
         player.addListener(listener)
         if (historyEvent != null) {
             player.open(historyEvent.mediaFileName)
+            trackingAllowed.value = LinhomeApplication.coreContext.core.config.getString("recording_formats", historyEvent.mediaFileName,"")?.lowercase()?.contains("h26") != true
         }
     }
 
@@ -75,11 +75,18 @@ class PlayerViewModel(val callId: String, val player: Player) : ViewModel() {
     }
 
     fun togglePlay() {
-        if (playing.value!!)
+        if (playing.value!!) {
             player.pause()
-        else
-            player.start()
-        playing.value = !playing.value!!
+            playing.value = false
+        }
+        else {
+            if (endReached.value == true) {
+                playFromStart()
+            } else {
+                player.start()
+                playing.value = true
+            }
+        }
     }
 
     fun pausePlay() {
@@ -89,34 +96,48 @@ class PlayerViewModel(val callId: String, val player: Player) : ViewModel() {
         }
     }
 
+    fun resumePlay() {
+        if (!playing.value!!) {
+            player.start()
+            playing.value = true
+        }
+    }
+
     fun playFromStart() {
-        targetSeek = 0
-        seek()
-        player.start()
-        playing.value = true
-        resetEvent.value = true
+        seek(0)
     }
 
 
-    fun seek() {
-        player.close()
-        if (historyEvent != null) {
-            player.open(historyEvent.mediaFileName)
+    fun seek(targetSeek: Int) {
+        userTracking.value = false
+        if (targetSeek < player.duration) {
+            endReached.value = false
+        }
+        if (playing.value == true) {
+            pausePlay()
         }
         player.seek(targetSeek)
-        if (playing.value!!)
-            player.start()
         updatePosition()
-        seekPosition.value = targetSeek
+        resumePlay()
     }
 
     fun updatePosition() {
-            position.value = player.currentPosition
+        position.value = player.currentPosition
     }
 
     fun close() {
         player.close()
         player.removeListener(listener)
     }
+
+    fun startUserTracking() {
+        pausePlay()
+        userTracking.value = true
+    }
+
+    fun setUserTrack(position: Int) {
+        userTrackingPosition.value = position
+    }
+
 
 }

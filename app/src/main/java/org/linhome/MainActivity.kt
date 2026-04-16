@@ -21,25 +21,33 @@
 package org.linhome
 
 import android.Manifest
-import android.annotation.SuppressLint
+import android.content.DialogInterface
+import android.os.Build
 import android.os.Bundle
-import android.view.*
+import android.view.MotionEvent
+import android.view.View
+import android.view.ViewGroup
+import android.view.Window
+import android.view.WindowManager
+import androidx.annotation.RequiresApi
 import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.NavController
 import androidx.navigation.findNavController
-import kotlinx.android.synthetic.main.app_bar_main.*
-import kotlinx.android.synthetic.main.app_bar_main.view.*
-import kotlinx.android.synthetic.main.content_main.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import org.linhome.customisation.Texts
 import org.linhome.customisation.Theme
 import org.linhome.databinding.ActivityMainBinding
-import org.linhome.entities.Account
+import org.linhome.entities.LinhomeAccount
+import org.linhome.linphonecore.extensions.extendedAccept
 import org.linhome.store.StorageManager
 import org.linhome.ui.tabbar.TabbarViewModel
 import org.linhome.ui.toolbar.ToobarButtonClickedListener
 import org.linhome.ui.toolbar.ToolbarViewModel
 import org.linhome.utils.DialogUtil
+import org.linphone.core.tools.Log
 import permissions.dispatcher.NeedsPermission
 import permissions.dispatcher.OnNeverAskAgain
 import permissions.dispatcher.OnPermissionDenied
@@ -54,8 +62,9 @@ class MainActivity : GenericActivity() {
     lateinit var toolbarViewModel: ToolbarViewModel
     lateinit var tabbarViewModel: TabbarViewModel
 
-
     var toobarButtonClickedListener: ToobarButtonClickedListener? = null
+    lateinit var binding: ActivityMainBinding
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         requestWindowFeature(Window.FEATURE_NO_TITLE)
@@ -68,8 +77,7 @@ class MainActivity : GenericActivity() {
         applyCommonTheme()
 
 
-        val binding: ActivityMainBinding =
-            DataBindingUtil.setContentView(this, R.layout.activity_main)
+        binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
         binding.lifecycleOwner = this
 
         toolbarViewModel = ViewModelProvider(this).get(ToolbarViewModel::class.java)
@@ -78,26 +86,26 @@ class MainActivity : GenericActivity() {
         tabbarViewModel = ViewModelProvider(this).get(TabbarViewModel::class.java)
         binding.tabbarviewmodel = tabbarViewModel
 
-        setSupportActionBar(toolbar)
+        setSupportActionBar(binding.appbar.toolbar)
 
         navController = findNavController(R.id.navigation_host_fragment)
         navControllerSideMenu = findNavController(R.id.host_fragment_sidemenu)
 
         applyTheme()
 
-        tabbar_devices.setOnClickListener {
-            if (tabBarLayoutClicked(tabbar_devices, tabbar_history)) {
+        binding.appbar.contentmain.tabbarDevices.setOnClickListener {
+            if (tabBarLayoutClicked(binding.appbar.contentmain.tabbarDevices, binding.appbar.contentmain.tabbarHistory)) {
                 navController.popBackStack()
                 navController.navigate(R.id.navigation_devices, null)
             }
         }
-        tabbar_history.setOnClickListener {
-            if (tabBarLayoutClicked(tabbar_history, tabbar_devices)) {
+        binding.appbar.contentmain.tabbarHistory.setOnClickListener {
+            if (tabBarLayoutClicked(binding.appbar.contentmain.tabbarHistory, binding.appbar.contentmain.tabbarDevices)) {
                 navController.popBackStack()
                 navController.navigate(R.id.navigation_history, null)
             }
         }
-        tabBarLayoutClicked(tabbar_devices, tabbar_history)
+        tabBarLayoutClicked(binding.appbar.contentmain.tabbarDevices, binding.appbar.contentmain.tabbarHistory)
 
         navController.addOnDestinationChangedListener { _, destination, _ ->
             if (sideMenuOpened()) {
@@ -111,48 +119,53 @@ class MainActivity : GenericActivity() {
                     enterNonRootFragment()
                 }
             }
-            toolbar_title.text = titleForNavigationFragment(destination.id)
+            binding.appbar.toolbarTitle.text = titleForNavigationFragment(destination.id)
         }
 
         navControllerSideMenu.addOnDestinationChangedListener { _, destination, _ ->
             when (destination.id) {
                 R.id.fragment_sidemenu -> {
                     enterNonRootFragment()
-                    toolbar_title.text = null
+                    binding.appbar.toolbarTitle.text = null
                 }
                 else -> {
                     enterRootFragment()
-                    toolbar_title.text =
+                    binding.appbar.toolbarTitle.text =
                         titleForNavigationFragment(navController.currentDestination?.id)
                 }
             }
         }
 
-        toolbar_right_button.setOnClickListener {
+        binding.appbar.toolbarRightButton.setOnClickListener {
             toobarButtonClickedListener?.onToolbarRightButtonClicked()
         }
-        toolbar_left_button.setOnClickListener {
+        binding.appbar.toolbarLeftButton.setOnClickListener {
             toobarButtonClickedListener?.onToolbarLeftButtonClicked()
         }
-        toolbar_burger_button.setOnClickListener {
+        binding.appbar.toolbarBurgerButton.setOnClickListener {
             onToolbarBurgerButtonClicked()
         }
-        toolbar_back_button.setOnClickListener {
+        binding.appbar.toolbarBackButton.setOnClickListener {
             onToolbarBackButtonClicked()
         }
 
-        if (!Account.configured() && (savedInstanceState == null || !savedInstanceState.getBoolean("ignored_no_account"))) {
+        if (!LinhomeAccount.configured() && (savedInstanceState == null || !savedInstanceState.getBoolean("ignored_no_account"))) {
             navController.navigate(R.id.navigation_assistant_root)
         }
 
-        if (savedInstanceState != null && savedInstanceState?.getBoolean("history_opened")) {
-            tabbar_history.performClick()
+        if (savedInstanceState != null && savedInstanceState?.getBoolean("history_opened") == true) {
+            binding.appbar.contentmain.tabbarHistory.performClick()
         }
 
+        if (intent.extras?.getBoolean("acceptCall") == true) {
+            LinhomeApplication.coreContext.core.currentCall?.extendedAccept()
+        }
 
-        if (!StorageManager.storePrivately)
-            startWithPermissionCheck()
-
+        if (!StorageManager.storePrivately) {
+            externalStorageWithPermissionCheck()
+        } else {
+            phoneStateWithPermissionCheck()
+        }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -164,11 +177,11 @@ class MainActivity : GenericActivity() {
     private fun enterNonRootFragment() {
         toolbarViewModel.backButtonVisible.value = true
         toolbarViewModel.burgerButtonVisible.value = false
-        tabbar.visibility = View.GONE
+        binding.appbar.contentmain.tabbar.visibility = View.GONE
     }
 
     private fun enterRootFragment() {
-        tabbar.visibility = View.VISIBLE
+        binding.appbar.contentmain.tabbar.visibility = View.VISIBLE
         toolbarViewModel.backButtonVisible.value = false
         toolbarViewModel.burgerButtonVisible.value = true
         toolbarViewModel.leftButtonVisible.value = false
@@ -186,13 +199,13 @@ class MainActivity : GenericActivity() {
 
 
     private fun applyTheme() { //Todo move into bindings when validated
-        toolbar.setBackgroundColor(Theme.getColor("color_a"))
-        tabbar.setBackgroundColor(Theme.getColor("color_j"))
-        toolbar.progress.indeterminateTintList = Theme.buildSingleColorStateList("color_a")
-        toolbar.progress.setBackgroundColor(Theme.getColor("color_j"))
+        binding.appbar.toolbar.setBackgroundColor(Theme.getColor("color_a"))
+        binding.appbar.contentmain.tabbar.setBackgroundColor(Theme.getColor("color_j"))
+        binding.appbar.progress.indeterminateTintList = Theme.buildSingleColorStateList("color_a")
+        binding.appbar.progress.setBackgroundColor(Theme.getColor("color_j"))
     }
 
-    private fun tabBarLayoutClicked(clicked: ViewGroup, unclicked: ViewGroup): Boolean {
+    fun tabBarLayoutClicked(clicked: ViewGroup, unclicked: ViewGroup): Boolean {
         if (clicked.isSelected)
             return false
         clicked.isSelected = true
@@ -248,8 +261,6 @@ class MainActivity : GenericActivity() {
         }
     }
 
-
-    @SuppressLint("NeedOnRequestPermissionsResult")
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<String>,
@@ -261,19 +272,68 @@ class MainActivity : GenericActivity() {
     }
 
     @NeedsPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-    fun start() {
+    fun externalStorage() {
+        phoneStateWithPermissionCheck()
     }
+
+    @NeedsPermission(Manifest.permission.READ_PHONE_STATE)
+    fun phoneState() {
+        LinhomeApplication.coreContext.initPhoneStateListener()
+        notificationsWithPermissionCheck()
+    }
+
+    @NeedsPermission(Manifest.permission.POST_NOTIFICATIONS)
+    fun notifications() {}
+
+    // Permissions denial
 
     @OnPermissionDenied(Manifest.permission.WRITE_EXTERNAL_STORAGE)
     fun onStorageDenied() {
-        DialogUtil.error("write_external_storage_permission_denied")
+        GlobalScope.launch(context = Dispatchers.Main) {
+            DialogUtil.error("write_external_storage_permission_denied",{ _: DialogInterface, _: Int ->
+                phoneStateWithPermissionCheck()
+            })
+        }
     }
-
     @OnNeverAskAgain(Manifest.permission.WRITE_EXTERNAL_STORAGE)
     fun onStorageDeniedNeverAsk() {
-        DialogUtil.error("write_external_storage_permission_denied_dont_ask_again")
+        GlobalScope.launch(context = Dispatchers.Main) {
+            DialogUtil.error("write_external_storage_permission_denied_dont_ask_again",{ _: DialogInterface, _: Int ->
+                phoneStateWithPermissionCheck()
+            })
+        }
     }
 
+    @OnPermissionDenied(Manifest.permission.READ_PHONE_STATE)
+    fun onPhoneDenied() {
+        GlobalScope.launch(context = Dispatchers.Main) {
+            DialogUtil.error("phone_state_permission_denied",{ _: DialogInterface, _: Int ->
+                notificationsWithPermissionCheck()
+            })
+        }
+    }
+    @OnNeverAskAgain(Manifest.permission.READ_PHONE_STATE)
+    fun onPhoneDeniedNeverAsk() {
+        GlobalScope.launch(context = Dispatchers.Main) {
+            DialogUtil.error("phone_state_permission_denied_dont_ask_again",{ _: DialogInterface, _: Int ->
+                notificationsWithPermissionCheck()
+            })
+        }
+    }
+
+    @OnPermissionDenied(Manifest.permission.POST_NOTIFICATIONS)
+    fun onNotificationDenied() {
+        GlobalScope.launch(context = Dispatchers.Main) {
+            DialogUtil.error("notifications_permission_denied")
+        }
+    }
+
+    @OnNeverAskAgain(Manifest.permission.POST_NOTIFICATIONS)
+    fun onNotificationsDeniedNeverAsk() {
+        GlobalScope.launch(context = Dispatchers.Main) {
+            DialogUtil.error("notifications_permission_denied_dont_ask_again")
+        }
+    }
 
     fun applyCommonTheme() {
         window.also { window ->
@@ -300,5 +360,12 @@ class MainActivity : GenericActivity() {
         return super.dispatchTouchEvent(event)
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (LinhomeApplication.coreContext.closeAppUponCallFinish) {
+            LinhomeApplication.coreContext.closeAppUponCallFinish = false
+            finish()
+        }
+    }
 
 }

@@ -24,18 +24,23 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
-import kotlinx.android.synthetic.main.fragment_assistant_login_linhome.view.*
-import kotlinx.android.synthetic.main.widget_round_rect_button.view.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import org.linhome.LinhomeApplication
+import org.linhome.LinhomeApplication.Companion.coreContext
 import org.linhome.LinhomeApplication.Companion.corePreferences
 import org.linhome.R
 import org.linhome.customisation.Texts
 import org.linhome.databinding.FragmentAssistantLoginLinhomeBinding
-import org.linhome.entities.Account
-import org.linhome.ui.assistant.CreatorAssistantFragment
+import org.linhome.entities.LinhomeAccount
+import org.linhome.ui.assistant.shared.CreatorAssistantFragment
 import org.linhome.ui.validators.ValidatorFactory
 import org.linhome.utils.DialogUtil
+import org.linphone.core.AccountCreator
+import org.linphone.core.Core
 import org.linphone.core.XmlRpcArgType
 
 
@@ -54,44 +59,40 @@ class LoginLinhomeAccountFragment : CreatorAssistantFragment() {
         binding.model = model
         binding.validators = ValidatorFactory.Companion
 
-        binding.root.login.root.setOnClickListener {
-            binding.root.username.validate()
-            binding.root.password.validate()
-            updateField(model.setUsername(model.username), binding.root.username)
-            updateField(model.setPassword(model.pass1), binding.root.password)
+        binding.login.setOnClickListener {
+            binding.username.validate()
+            binding.password.validate()
+            updateField(model.setUsername(model.username), binding.username)
+            updateField(model.setPassword(model.pass1), binding.password)
             if (model.fieldsValid()) {
                 hideKeyboard()
+                binding.login.isEnabled = false
                 showProgress()
-                val xmlRpcSession = corePreferences.xmlRpcServerUrl?.let { it1 ->
-                    LinhomeApplication.coreContext.core.createXmlRpcSession(
-                        it1
-                    )
-                }
-                val xmlRpcRequest =
-                    xmlRpcSession?.createRequest(XmlRpcArgType.String, "check_authentication")
-                xmlRpcRequest?.setListener { request ->
+                model.accountCreatorResult.observe(viewLifecycleOwner) { response ->
                     hideProgress()
-                    if (request != null) {
-                        if (request.stringResponse == "OK") {
-                            Account.linhomeAccountCreateProxyConfig(model.accountCreator)
-                            mainactivity.navController.popBackStack(R.id.navigation_devices, false)
-                            DialogUtil.info("linhome_account_loggedin")
-                        } else {
-                            binding.root.username.setError(Texts.get("linhome_account_login_failed_unknown_user_or_wroong_password"))
-                        }
+                    if (response == AccountCreator.Status.AccountExist) {
+                        model.linhomeAccountCreateProxyConfig(model.accountCreator,true, model.sipRegistrationResult)
+                    } else {
+                        binding.login.isEnabled = true
+                        binding.username.setError(Texts.get("linhome_account_login_failed_unknown_user_or_wroong_password"))
                     }
                 }
-                xmlRpcRequest?.addStringArg(model.username.first.value!!)
-                xmlRpcRequest?.addStringArg(
-                    corePreferences.encryptedPass(
-                        model.username.first.value!!,
-                        model.pass1.first.value!!
-                    )
-                )
-                corePreferences.loginDomain?.let { it1 -> xmlRpcRequest?.addStringArg(it1) }
-                if (xmlRpcRequest != null) {
-                    xmlRpcSession?.sendRequest(xmlRpcRequest)
+                model.fireLogin()
+            }
+        }
+
+        model.sipRegistrationResult.observe(viewLifecycleOwner) { sipOk ->
+            if (sipOk) {
+                mainactivity.navController.popBackStack(R.id.navigation_devices, false)
+                DialogUtil.info("linhome_account_loggedin")
+                GlobalScope.launch(context = Dispatchers.Main) { // Fetch vcards
+                    coreContext.core.stop()
+                    coreContext.core.start()
                 }
+            } else {
+                hideProgress()
+                binding.login.isEnabled = true
+                binding.username.setError(Texts.get("linhome_account_login_failed_unknown_user_or_wroong_password"))
             }
         }
 

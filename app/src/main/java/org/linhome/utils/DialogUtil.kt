@@ -102,9 +102,6 @@ class DialogUtil {
                 titleKey?.also {
                     dialog.setTitle(Texts.get(it))
                 }
-                dialog.setOnDismissListener { dialog ->
-                    cancelFunction.invoke(dialog, 0)
-                }
                 dialog.setCancelable(false)
                 dialog.show()
             }
@@ -138,15 +135,16 @@ class DialogUtil {
             confirm(null, messageKey, confirmFonction, cancelFunction, "confirm", "cancel", oneArg)
         }
 
-        fun toast(textKey: String, long: Boolean = false) {
+        fun toast(textKey: String, long: Boolean = false, oneArg: String? = null,) {
             context?.also {
                 Toast.makeText(
                     context,
-                    Texts.get(textKey),
+                    if (oneArg != null) Texts.get(textKey,oneArg) else Texts.get(textKey),
                     if (long) Toast.LENGTH_LONG else Toast.LENGTH_SHORT
                 ).show()
             }
         }
+
     }
 
 }

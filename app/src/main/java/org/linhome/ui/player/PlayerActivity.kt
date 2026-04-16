@@ -25,25 +25,25 @@ import android.os.Bundle
 import android.os.SystemClock
 import android.view.TextureView
 import android.view.View
-import android.view.View.OnTouchListener
+import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.view.updateLayoutParams
 import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
-import kotlinx.android.synthetic.main.activity_player.view.*
-import kotlinx.android.synthetic.main.chunk_player_controls.view.*
 import org.linhome.GenericActivity
 import org.linhome.LinhomeApplication
 import org.linhome.R
 import org.linhome.databinding.ActivityPlayerBinding
 import org.linhome.linphonecore.extensions.historyEvent
 import org.linhome.store.HistoryEventStore
-import org.linhome.utils.cdlog
+import org.linhome.ui.call.CallGenericActivity
+import org.linhome.ui.call.CallGenericActivity.Companion.computePercentageWidth
+import org.linhome.utils.getImageDimension
 import org.linphone.core.Player
 import org.linphone.core.tools.Log
 
 
-class PlayerActivity : GenericActivity(allowsLandscapeOnSmartPhones = true) {
-
+class PlayerActivity : GenericActivity() {
 
     lateinit var binding: ActivityPlayerBinding
     lateinit var playerViewModel: PlayerViewModel
@@ -78,15 +78,23 @@ class PlayerActivity : GenericActivity(allowsLandscapeOnSmartPhones = true) {
                                 PlayerViewModelFactory(callId, player)
                             )[PlayerViewModel::class.java]
                         binding.model = playerViewModel
-                        binding.root.cancel.setOnClickListener {
-                            binding.root.cancel.alpha = 0.3f
+                        binding.cancel.setOnClickListener {
+                            binding.cancel.alpha = 0.3f
                             finish()
                         }
-                        setupPlayerControl(binding.root, playerViewModel)
+                        setupPlayerControl(binding, playerViewModel)
                         if (event.hasVideo) {
-                            setTextureView(binding.root.video, player, seekTo, playing)
+                            setTextureView(binding.video, player, seekTo, playing)
                         }
                         HistoryEventStore.markAsRead(event.id)
+                        binding.chunkPlayerControls?.play?.setOnClickListener {
+                            togglePlay()
+                        }
+                        event.mediaThumbnail.absolutePath.getImageDimension()?.also { size ->
+                            binding.video.updateLayoutParams<ConstraintLayout.LayoutParams> {
+                                dimensionRatio = "H,${size.width}:${size.height}"
+                                matchConstraintPercentWidth = CallGenericActivity.computePercentageWidth(size,200) //  240Dp left for buttons and header
+                            }                        }
                     }
             }
 
@@ -102,28 +110,30 @@ class PlayerActivity : GenericActivity(allowsLandscapeOnSmartPhones = true) {
         super.onSaveInstanceState(outState)
     }
 
-    private fun setupPlayerControl(view: View, model: PlayerViewModel) {
+    private fun setupPlayerControl(view: ActivityPlayerBinding, model: PlayerViewModel) {
         model.playing.observe(this, Observer { playing ->
             if (playing) {
-                view.timer.start()
+                view.chunkPlayerControls?.timer?.start()
             } else {
-                view.timer.stop()
+                view.chunkPlayerControls?.timer?.stop()
             }
         })
 
-        model.resetEvent.observe(this, Observer { reset ->
-            if (reset)
-                view.timer.base = SystemClock.elapsedRealtime()
-        })
+        model.playing.observe(this) { p ->
+            view.chunkPlayerControls?.timer?.base = SystemClock.elapsedRealtime() - playerViewModel.position.value!!
+        }
 
-        model.seekPosition.observe(this, Observer { p ->
-            view.timer.base = SystemClock.elapsedRealtime() - p
-        })
+        model.userTrackingPosition.observe(this) { p ->
+            if (model.userTracking.value == true) {
+                binding.chunkPlayerControls?.timer?.text =
+                    String.format("%02d:%02d", (p / 1000) / 60, (p / 1000) % 60);
+            }
+        }
 
-        view.timer.setOnChronometerTickListener {
+        view.chunkPlayerControls?.timer?.setOnChronometerTickListener {
             model.updatePosition()
         }
-        view.seek.setOnTouchListener({ view, motionEvent -> false })
+        view.chunkPlayerControls?.seek?.setOnTouchListener({ view, motionEvent -> false })
 
     }
 
@@ -155,21 +165,6 @@ class PlayerActivity : GenericActivity(allowsLandscapeOnSmartPhones = true) {
                     Log.i("[Player] Surface texture should be available now seekTo = ${seekTo}")
                     player.setWindowId(textureView.surfaceTexture)
                     playerViewModel.playFromStart()
-                    if (!playing)
-                        playerViewModel?.pausePlay()
-
-                    /* Temporarily disable until seek is fixed in lib for H264
-                    if (seekTo == 0)
-                        playerViewModel.playFromStart()
-                    else {
-                        playerViewModel.targetSeek = seekTo
-                        playerViewModel.seekPosition.value = seekTo
-                        playerViewModel.playing.value = true
-                        playerViewModel.seek()
-                        if (!playing)
-                            playerViewModel.togglePlay()
-                    }
-                     */
                 }
             }
         }
@@ -185,6 +180,16 @@ class PlayerActivity : GenericActivity(allowsLandscapeOnSmartPhones = true) {
     override fun onDestroy() {
         playerViewModel?.close()
         super.onDestroy()
+    }
+
+    fun togglePlay() {
+        if (playerViewModel.playing.value == true)
+            binding.chunkPlayerControls?.timer?.stop()
+        else {
+            binding.chunkPlayerControls?.timer?.base = SystemClock.elapsedRealtime() - playerViewModel.position.value!!
+            binding.chunkPlayerControls?.timer?.start()
+        }
+        playerViewModel.togglePlay()
     }
 
 }

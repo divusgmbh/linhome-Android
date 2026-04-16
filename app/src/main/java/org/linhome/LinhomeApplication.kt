@@ -23,10 +23,12 @@ package org.linhome
 import android.app.Application
 import android.content.Context
 import android.content.res.Configuration
+import org.linhome.compatibility.Compatibility
 import org.linhome.customisation.Customisation
 import org.linhome.customisation.Texts
 import org.linhome.linphonecore.CoreContext
 import org.linhome.linphonecore.CorePreferences
+import org.linhome.linphonecore.CoreService
 import org.linhome.store.DeviceStore
 import org.linphone.core.Factory
 import org.linphone.core.LogCollectionState
@@ -42,9 +44,15 @@ class LinhomeApplication : Application() {
 
         var someActivityRunning: Boolean = false
 
-        fun ensureCoreExists(context: Context) {
-            if (::coreContext.isInitialized && !coreContext.stopped) {
-                return
+        fun ensureCoreExists(
+            context: Context,
+            service: CoreService? = null,
+            useAutoStartDescription: Boolean = false,
+            force: Boolean = false,
+            startService: Boolean = true) : Boolean {
+
+            if (!force && ::coreContext.isInitialized && !coreContext.stopped) {
+                return false
             }
 
             Factory.instance().setLogCollectionPath(context.filesDir.absolutePath)
@@ -57,12 +65,13 @@ class LinhomeApplication : Application() {
                 corePreferences.configPath,
                 corePreferences.factoryConfigPath
             )
+            config.setString("storage","call_logs_db_uri",context.filesDir.absolutePath + "/linphone-log-history.db")
             corePreferences.config = config
-
             Factory.instance().setDebugMode(corePreferences.debugLogs, Texts.appName)
             Log.i("[Application] Core context created")
-            coreContext = CoreContext(context, config)
-            coreContext.start()
+            coreContext = CoreContext(context, config, service, useAutoStartDescription)
+            DeviceStore // will add listener to core
+            coreContext.start(startService = startService)
 
             // work around https://bugs.linphone.org/view.php?id=7714 - for demo purpose
             if (corePreferences.config.getBool("app","first_launch", true)) {
@@ -71,25 +80,34 @@ class LinhomeApplication : Application() {
             coreContext.core.setStaticPicture(context.filesDir.absolutePath+"/nowebcamCIF.jpg")
             coreContext.core.ring = context.filesDir.absolutePath+"/bell.wav"
             coreContext.core.ringDuringIncomingEarlyMedia = true
-
+            coreContext.core.isNativeRingingEnabled = true
+            coreContext.core.friendsDatabasePath = context.filesDir.absolutePath+"/devices.db"
             setDefaultCodecs()
+            return true
 
         }
 
+        fun contextExists(): Boolean {
+            return ::coreContext.isInitialized
+        }
+
         fun setDefaultCodecs() {
+
+            coreContext.core.audioPayloadTypes.forEach {
+                if (!corePreferences.availableAudioCodecs.contains(it.mimeType.lowercase()))
+                    it.enable(false)
+            }
+
             if (corePreferences.config.getBool("app","default_codec_set", false)) {
                 return
             }
             corePreferences.config.setBool("app","default_codec_set", true)
 
-            val defaultVideoActive = arrayOf("h264")
-            val defaultAudioActive = arrayOf("pcmu","pcma","opus")
-
             coreContext.core.videoPayloadTypes.forEach {
-                it.enable(defaultVideoActive.contains(it.mimeType.toLowerCase()))
+                it.enable(corePreferences.enabledVideoCodecsByDefault.contains(it.mimeType.lowercase()))
             }
             coreContext.core.audioPayloadTypes.forEach {
-                it.enable(defaultAudioActive.contains(it.mimeType.toLowerCase()))
+                it.enable(corePreferences.enabledAudioCodecsByDefault.contains(it.mimeType.lowercase()))
             }
             corePreferences.config.sync()
         }
@@ -103,6 +121,7 @@ class LinhomeApplication : Application() {
         Customisation
         Texts
         ensureCoreExists(applicationContext)
+        Compatibility.setupAppStartupListener(applicationContext)
         DeviceStore
     }
 

@@ -23,6 +23,7 @@ package org.linhome.ui.call
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.google.android.gms.common.images.Size
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
@@ -34,28 +35,28 @@ import org.linhome.customisation.DeviceTypes
 import org.linhome.entities.Action
 import org.linhome.entities.Device
 import org.linhome.entities.HistoryEvent
-import org.linhome.linphonecore.CoreContext
 import org.linhome.linphonecore.extensions.*
 import org.linhome.store.DeviceStore
+import org.linhome.utils.DialogUtil
 import org.linhome.utils.extensions.existsAndIsNotEmpty
+import org.linhome.utils.getImageDimension
 import org.linphone.core.AudioDevice
 import org.linphone.core.Call
 import org.linphone.core.CallListenerStub
 import org.linphone.core.Reason
-import java.util.ArrayList
+import org.linphone.core.tools.Log
 
 
 class CallViewModelFactory(private val call: Call) :
-        ViewModelProvider.NewInstanceFactory() {
-    @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel?> create(modelClass: Class<T>): T {
+    ViewModelProvider.NewInstanceFactory() {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
         return CallViewModel(call) as T
     }
 }
 
 class CallViewModel(val call: Call) : ViewModel() {
     val device: MutableLiveData<Device?> =
-            MutableLiveData(DeviceStore.findDeviceByAddress(call.remoteAddress))
+        MutableLiveData(DeviceStore.findDeviceByAddress(call.remoteAddress))
     val defaultDeviceType: MutableLiveData<String?> = MutableLiveData(DeviceTypes.defaultType)
     val actions: ArrayList<Action> = device.value?.let {
         it.actions
@@ -66,8 +67,10 @@ class CallViewModel(val call: Call) : ViewModel() {
     val videoFullScreen: MutableLiveData<Boolean> = MutableLiveData(false)
 
     val speakerDisabled: MutableLiveData<Boolean> =
-            MutableLiveData(coreContext.core.outputAudioDevice?.type != AudioDevice.Type.Speaker)
-    val microphoneMuted: MutableLiveData<Boolean> = MutableLiveData(!coreContext.core.micEnabled())
+        MutableLiveData(coreContext.core.outputAudioDevice?.type != AudioDevice.Type.Speaker)
+    val microphoneMuted: MutableLiveData<Boolean> = MutableLiveData(!coreContext.core.isMicEnabled)
+
+    val videoSize = MutableLiveData<Size>()
 
     private var historyEvent: HistoryEvent
 
@@ -79,7 +82,7 @@ class CallViewModel(val call: Call) : ViewModel() {
                 }
                 fireActionsOnCallStateChanged(state)
                 attemptSetDeviceThumbnail(state)
-                call?.remoteParams?.videoEnabled()?.also {
+                call?.remoteParams?.isVideoEnabled?.also {
                     if (!videoContent.value!!)
                         call.requestNotifyNextVideoFrameDecoded()
                 }
@@ -89,6 +92,10 @@ class CallViewModel(val call: Call) : ViewModel() {
         }
 
         override fun onNextVideoFrameDecoded(call: Call) {
+            call.params.recordFile?.let {
+                coreContext.core.config.setString("recording_formats",
+                    it,call.currentParams.usedVideoPayloadType?.mimeType)
+            }
             if (!videoContent.value!!) {
                 videoContent.value = true
             }
@@ -99,6 +106,13 @@ class CallViewModel(val call: Call) : ViewModel() {
                 }
                 if (!event.mediaThumbnail.existsAndIsNotEmpty()) {
                     call.takeVideoSnapshot(event.mediaThumbnail.absolutePath)
+                    GlobalScope.launch(context = Dispatchers.Main) {
+                        delay(500) // Snapshot availability takes a little time.
+                        event.mediaThumbnail.absolutePath.getImageDimension()?.also {
+                            videoSize.value = it
+                            coreContext.core.config.setString("detected_video_dimensions",call.remoteAddress.asStringUriOnly(),"${it.width},${it.height}")
+                        }
+                    }
                 }
             }
         }
@@ -110,7 +124,7 @@ class CallViewModel(val call: Call) : ViewModel() {
         call.addListener(callListener)
         fireActionsOnCallStateChanged(call.state)
         if (!videoContent.value!!) {
-            call?.remoteParams?.videoEnabled()?.also {
+            call?.remoteParams?.isVideoEnabled?.also {
                 if (it)
                     call.requestNotifyNextVideoFrameDecoded()
             }
@@ -118,14 +132,19 @@ class CallViewModel(val call: Call) : ViewModel() {
         if (LinhomeApplication.instance.tablet()) {
             coreContext.core.forceSpeakerAudioRoute()
         }
+        coreContext.core.config.getString("detected_video_dimensions",call.remoteAddress.asStringUriOnly(),null)?.split(",")?.also {
+            videoSize.value = Size(it.first().toInt(),it.last().toInt())
+        }
     }
 
     private fun fireActionsOnCallStateChanged(cstate: Call.State) {
-        if (cstate == Call.State.IncomingReceived) {
-            call.extendedAcceptEarlyMedia()
-        }
-        if (cstate == Call.State.StreamsRunning && call.callLog?.dir == Call.Dir.Outgoing && !call.isRecording) {
-            call.startRecording()
+        GlobalScope.launch(context = Dispatchers.Main) {
+            if (cstate == Call.State.IncomingReceived) {
+                call.extendedAcceptEarlyMedia()
+            } else
+                if (cstate == Call.State.StreamsRunning && call.callLog?.dir == Call.Dir.Outgoing && !call.isRecording) {
+                    call.startRecording()
+                }
         }
     }
 
@@ -169,8 +188,8 @@ class CallViewModel(val call: Call) : ViewModel() {
 
 
     fun toggleMute() {
-        val micEnabled = coreContext.core.micEnabled()
-        coreContext.core.enableMic(!micEnabled)
+        val micEnabled = coreContext.core.isMicEnabled
+        coreContext.core.isMicEnabled = !micEnabled
         microphoneMuted.value = micEnabled
     }
 
@@ -195,25 +214,35 @@ class CallViewModel(val call: Call) : ViewModel() {
         val actionMethodType = device.value?.let { d->
             d.actionsMethodType
         } ?: corePreferences.defaultActionsMethodType
+        Log.i("[CallViewModel] received user request to send DTMF: ${action.code} via $actionMethodType")
         when (actionMethodType) {
             "method_dtmf_sip_info" -> {
+                coreContext.core.useRfc2833ForDtmf = false
                 coreContext.core.useInfoForDtmf = true
-                action.code?.let { call.sendDtmfs(it) }
+                action.code?.let {
+                    call.sendDtmfs(it)
+                    DialogUtil.toast("action_sent", oneArg = action.actionText())
+                }
             }
             "method_dtmf_rfc_4733" -> {
+                coreContext.core.useInfoForDtmf = false
                 coreContext.core.useRfc2833ForDtmf = true
-                action.code?.let { call.sendDtmfs(it) }
+                action.code?.let {
+                    call.sendDtmfs(it)
+                    DialogUtil.toast("action_sent", oneArg = action.actionText())
+                }
             }
             "method_sip_message" -> {
                 var params = coreContext.core.createDefaultChatRoomParams()
-                params.enableGroup(false)
-                params.enableEncryption(false)
+                params.isGroupEnabled = false
+                params.isEncryptionEnabled = false
                 var chatRoom = coreContext.core.searchChatRoom(params,call.remoteAddress, call.remoteAddress, arrayOf(call.remoteAddress!!))
                 if (chatRoom == null) {
                     chatRoom = coreContext.core.createChatRoom(params, call.remoteAddress,  arrayOf(call.remoteAddress!!))
                 }
                 val message = chatRoom?.createMessageFromUtf8(action.code)
                 message?.send()
+                DialogUtil.toast("action_sent", oneArg = action.actionText())
             }
         }
     }

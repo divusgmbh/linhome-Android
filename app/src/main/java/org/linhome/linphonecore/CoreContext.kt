@@ -20,41 +20,65 @@
 package org.linhome.linphonecore
 
 
+import android.Manifest.permission.POST_NOTIFICATIONS
+import android.Manifest.permission.READ_PHONE_STATE
 import android.content.Context
 import android.content.Intent
 import android.graphics.PixelFormat
 import android.media.AudioManager
-import android.os.Handler
-import android.os.Looper
 import android.os.Vibrator
-import android.telephony.PhoneStateListener
 import android.telephony.TelephonyManager
 import android.util.TypedValue
-import android.view.*
+import android.view.Gravity
+import android.view.LayoutInflater
+import android.view.MotionEvent
+import android.view.View
+import android.view.WindowManager
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.linhome.LinhomeApplication
 import org.linhome.LinhomeApplication.Companion.corePreferences
 import org.linhome.R
+import org.linhome.compatibility.Compatibility
+import org.linhome.linphonecore.extensions.extendedAccept
 import org.linhome.notifications.NotificationsManager
 import org.linhome.ui.call.CallInProgressActivity
 import org.linhome.ui.call.CallIncomingActivity
 import org.linhome.ui.call.CallOutgoingActivity
 import org.linhome.utils.DialogUtil
-import org.linphone.compatibility.Compatibility
-import org.linphone.core.*
+import org.linphone.compatibility.PhoneStateInterface
+import org.linphone.core.AudioDevice
+import org.linphone.core.Call
+import org.linphone.core.Config
+import org.linphone.core.Core
+import org.linphone.core.CoreListenerStub
+import org.linphone.core.Factory
+import org.linphone.core.GlobalState
+import org.linphone.core.Player
+import org.linphone.core.Reason
+import org.linphone.core.RegistrationState
 import org.linphone.mediastream.Log
 import org.linphone.mediastream.Version
 import java.io.File
-import java.util.*
+import java.util.Timer
+import java.util.TimerTask
 import kotlin.math.abs
 
-class CoreContext(val context: Context, coreConfig: Config) {
+class CoreContext(
+    val context: Context,
+    coreConfig: Config,
+    service: CoreService? = null,
+    useAutoStartDescription: Boolean = false
+) {
     var stopped = false
     val core: Core
-    val handler: Handler = Handler(Looper.getMainLooper())
+    var closeAppUponCallFinish = false
+    private var phoneStateListener: PhoneStateInterface? = null
 
     val appVersion: String by lazy {
         "${org.linhome.BuildConfig.VERSION_NAME} / versionCode: ${org.linhome.BuildConfig.VERSION_CODE}  (${org.linhome.BuildConfig.BUILD_TYPE})"
@@ -71,41 +95,28 @@ class CoreContext(val context: Context, coreConfig: Config) {
         NotificationsManager(context)
     }
 
-    private var gsmCallActive = false
-    private val phoneStateListener = object : PhoneStateListener() {
-        override fun onCallStateChanged(state: Int, phoneNumber: String?) {
-            gsmCallActive = when (state) {
-                TelephonyManager.CALL_STATE_OFFHOOK -> {
-                    Log.i("[Context] Phone state is off hook")
-                    true
-                }
-                TelephonyManager.CALL_STATE_RINGING -> {
-                    Log.i("[Context] Phone state is ringing")
-                    true
-                }
-                TelephonyManager.CALL_STATE_IDLE -> {
-                    Log.i("[Context] Phone state is idle")
-                    false
-                }
-                else -> {
-                    Log.w("[Context] Phone state is unexpected: $state")
-                    false
-                }
-            }
-        }
-    }
-
     private var overlayX = 0f
     private var overlayY = 0f
     private var callOverlay: View? = null
     private var isVibrating = false
 
+    val coroutineScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
+
+    fun gsmCallActive() : Boolean {
+        return phoneStateListener?.isInCall() == true
+    }
+
     private val listener: CoreListenerStub = object : CoreListenerStub() {
+
+        override fun onPushNotificationReceived(core: Core, payload: String?) {
+            org.linphone.core.tools.Log.i("[Context] Push notification received: $payload")
+        }
+
         override fun onGlobalStateChanged(core: Core, state: GlobalState, message: String) {
             Log.i("[Context] Global state changed [$state]")
             if (state == GlobalState.On) {
-
-
+                Log.d("[Context] Configuration is \n : ${core.config.dump()}")
             }
         }
 
@@ -118,15 +129,13 @@ class CoreContext(val context: Context, coreConfig: Config) {
             Log.i("[Context] Call state changed [$state]")
             if (state == Call.State.IncomingReceived) {
 
-                if (state == Call.State.IncomingReceived && core.callsNb > 1) {
+                if (core.callsNb > 1) {
                     call.decline(Reason.Busy)
                     return
                     }
 
-                if (gsmCallActive) {
-                    Log.w("[Context] Refusing the call with reason busy because a GSM call is active")
-                    call.decline(Reason.Busy)
-                    return
+                if (gsmCallActive()) {
+                    Log.w("[Context] Receiving a Linhome call while a GSM call is active")
                 }
 
                 if (core.callsNb == 1 && corePreferences.vibrateWhileIncomingCall) {
@@ -200,12 +209,17 @@ class CoreContext(val context: Context, coreConfig: Config) {
     }
 
     init {
+        if (service != null) {
+            org.linphone.core.tools.Log.i("[Context] Starting foreground service")
+            notificationsManager.startForegroundToKeepAppAlive(service, useAutoStartDescription)
+        }
         core = Factory.instance().createCoreWithConfig(coreConfig, context)
         stopped = false
         Log.i("[Context] Ready")
     }
 
-    fun start(isPush: Boolean = false) {
+
+    fun start(isPush: Boolean = false, startService: Boolean = true) {
         Log.i("[Context] Starting")
 
         notificationsManager.onCoreReady()
@@ -220,19 +234,18 @@ class CoreContext(val context: Context, coreConfig: Config) {
 
         configureCore()
 
-        val telephonyManager =
-            context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
-        Log.i("[Context] Registering notification_phone state listener")
-        telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_CALL_STATE)
+        initPhoneStateListener()
+
+        if (corePreferences.keepServiceAlive && Compatibility.hasPermission(context,
+                POST_NOTIFICATIONS)) {
+            org.linphone.core.tools.Log.i("[Context] Background mode setting is enabled, starting Service")
+            notificationsManager.startForeground()
+        }
+
     }
 
     fun stop() {
         Log.i("[Context] Stopping")
-
-        val telephonyManager =
-            context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
-        Log.i("[Context] Unregistering notification_phone state listener")
-        telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_NONE)
 
         notificationsManager.destroy()
 
@@ -245,7 +258,6 @@ class CoreContext(val context: Context, coreConfig: Config) {
         Log.i("[Context] Configuring Core")
 
         core.zrtpSecretsFile = context.filesDir.absolutePath + "/zrtp_secrets"
-        core.callLogsDatabasePath = context.filesDir.absolutePath + "/linphone-log-history.db"
 
         initUserCertificates()
 
@@ -257,8 +269,8 @@ class CoreContext(val context: Context, coreConfig: Config) {
     private fun computeUserAgent() {
         val deviceName: String = corePreferences.deviceName
         val appName: String = context.resources.getString(R.string.app_name)
-        val androidVersion = org.linhome.BuildConfig.VERSION_NAME
-        val userAgent = "$appName/$androidVersion ($deviceName) LinphoneSDK"
+        val appVersion = org.linhome.BuildConfig.VERSION_NAME
+        val userAgent = "$deviceName $appName $appVersion linphone-sdk"
         val sdkVersion = context.getString(R.string.linphone_sdk_version)
         val sdkBranch = context.getString(R.string.linphone_sdk_branch)
         val sdkUserAgent = "$sdkVersion ($sdkBranch)"
@@ -280,9 +292,7 @@ class CoreContext(val context: Context, coreConfig: Config) {
 
     fun answerCall(call: Call) {
         Log.i("[Context] Answering call $call")
-        val params = core.createCallParams(call)
-        //params.recordFile = LinphoneUtils.getRecordingFilePathForAddress(call.remoteAddress)
-        call.acceptWithParams(params)
+        call.extendedAccept()
     }
 
     fun declineCall(call: Call) {
@@ -374,6 +384,20 @@ class CoreContext(val context: Context, coreConfig: Config) {
         }
     }
 
+    fun checkIfForegroundServiceNotificationCanBeRemovedAfterDelay(delayInMs: Long) {
+        coroutineScope.launch {
+            withContext(Dispatchers.Default) {
+                delay(delayInMs)
+                withContext(Dispatchers.Main) {
+                    if (core.defaultAccount != null && core.defaultAccount?.state == RegistrationState.Ok) {
+                        org.linphone.core.tools.Log.i("[Context] Default account is registered, cancel foreground service notification if possible")
+                        notificationsManager.stopForegroundNotificationIfPossible()
+                    }
+                }
+            }
+        }
+    }
+
     /* Start call related activities */
 
     private fun onIncomingReceived(call: Call) {
@@ -421,6 +445,22 @@ class CoreContext(val context: Context, coreConfig: Config) {
         )
 
         return sharedPlayer
+    }
 
+    fun initPhoneStateListener() {
+        Log.i("[Context] Registering notification_phone state listener")
+        if (Compatibility.hasPermission(context,READ_PHONE_STATE)) {
+            try {
+                phoneStateListener =
+                    Compatibility.createPhoneListener(
+                        context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+                    )
+            } catch (exception: SecurityException) {
+                val hasReadPhoneStatePermission = Compatibility.hasPermission(context,READ_PHONE_STATE)
+                Log.e("[Context] Failed to create phone state listener: $exception, READ_PHONE_STATE permission status is $hasReadPhoneStatePermission")
+            }
+        } else {
+            Log.w("[Context] Can't create phone state listener, READ_PHONE_STATE permission isn't granted")
+        }
     }
 }

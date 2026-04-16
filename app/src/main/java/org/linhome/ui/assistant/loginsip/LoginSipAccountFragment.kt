@@ -20,18 +20,18 @@
 
 package org.linhome.ui.assistant.loginsip
 
+import android.content.DialogInterface
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
-import kotlinx.android.synthetic.main.fragment_assistant_login_sip.view.*
-import kotlinx.android.synthetic.main.widget_round_rect_button_with_icon.view.*
+import org.linhome.LinhomeApplication.Companion.coreContext
 import org.linhome.R
 import org.linhome.databinding.FragmentAssistantLoginSipBinding
-import org.linhome.entities.Account
-import org.linhome.ui.assistant.CreatorAssistantFragment
+import org.linhome.entities.LinhomeAccount
+import org.linhome.ui.assistant.shared.CreatorAssistantFragment
 import org.linhome.ui.validators.ValidatorFactory
 import org.linhome.utils.DialogUtil
 import org.linphone.core.TransportType
@@ -51,28 +51,29 @@ class LoginSipAccountFragment : CreatorAssistantFragment() {
         binding.model = model
         binding.validators = ValidatorFactory.Companion
 
-        binding.root.more.root.setOnClickListener {
+        binding.more.setOnClickListener {
             model.moreOptionsOpened.value = true
         }
 
-        binding.root.loginsip.root.setOnClickListener {
-            binding.root.username.validate()
-            binding.root.password.validate()
-            binding.root.domain.validate()
-            binding.root.proxy.validate()
-            binding.root.expiration.validate()
-            updateField(model.setUsername(model.username), binding.root.username)
-            updateField(model.setPassword(model.pass1), binding.root.password)
-            updateField(model.setDomain(model.domain), binding.root.domain)
+        binding.loginsip.setOnClickListener {
+            model.accountCreator = coreContext.core.createAccountCreator(null)
+            binding.username.validate()
+            binding.password.validate()
+            binding.domain.validate()
+            binding.proxy.validate()
+            binding.expiration.validate()
+            updateField(model.setUsername(model.username), binding.username)
+            updateField(model.setPassword(model.pass1), binding.password)
+            updateField(model.setDomain(model.domain), binding.domain)
             model.setTransport(TransportType.values()[model.transport.value!!])
             if (model.valid()) {
+                binding.loginsip.isEnabled = false
                 hideKeyboard()
                 showProgress()
-                Account.sipAccountLogin(
-                    model.accountCreator,
+                model.sipAccountLogin(
                     model.proxy.first.value,
                     model.expiration.first.value!!,
-                    model.pushReady
+                    model.sipRegistered
                 )
             }
         }
@@ -81,9 +82,30 @@ class LoginSipAccountFragment : CreatorAssistantFragment() {
             if (pushready) {
                 DialogUtil.info("sip_account_created")
                 mainactivity.navController.popBackStack(R.id.navigation_devices, false)
-            } else
+            } else {
                 DialogUtil.error("failed_creating_pushgateway")
+                mainactivity.navController.popBackStack(R.id.navigation_devices, false)
+            }
         })
+
+        model.sipRegistered.observe(viewLifecycleOwner, Observer { sipRegistered ->
+            if (!sipRegistered) {
+                binding.loginsip.isEnabled = true
+                hideProgress()
+                DialogUtil.confirm(
+                    null,
+                    "failed_sip_login_modify_parameters",
+                    { _: DialogInterface, _: Int ->
+                        LinhomeAccount.disconnect()
+                    },
+                    cancelFunction = {_: DialogInterface, _: Int ->
+                        mainactivity.navController.popBackStack(R.id.navigation_devices, false)
+                    },
+                    cancelTextKey = "no",
+                    confirmTextKey = "yes")
+            }
+        })
+
 
         return binding.root
     }

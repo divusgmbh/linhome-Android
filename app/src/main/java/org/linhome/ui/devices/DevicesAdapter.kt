@@ -34,12 +34,12 @@ import org.linhome.BR
 import org.linhome.GenericFragment
 import org.linhome.LinhomeApplication
 import org.linhome.R
+import org.linhome.compatibility.Compatibility
 import org.linhome.customisation.Theme
 import org.linhome.databinding.ItemDeviceBinding
 import org.linhome.entities.Device
 import org.linhome.store.DeviceStore
 import org.linhome.utils.DialogUtil
-import org.linphone.compatibility.Compatibility
 
 
 class SwipeToDeleteCallback(private var adapter: DevicesAdapter) :
@@ -78,6 +78,11 @@ class SwipeToDeleteCallback(private var adapter: DevicesAdapter) :
         if (viewHolder.adapterPosition == -1) {
             return
         }
+
+        val device = adapter.devices.value!![viewHolder.adapterPosition]
+        if (device.isRemotelyProvisionned)
+            return
+
         if (!initiated) {
             init()
         }
@@ -113,6 +118,8 @@ class SwipeToDeleteCallback(private var adapter: DevicesAdapter) :
 
     override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
         val device = adapter.devices.value!![viewHolder.adapterPosition]
+        if (device.isRemotelyProvisionned)
+            return
         DialogUtil.confirm(
             "delete_device_confirm_message",
             { _: DialogInterface, _: Int ->

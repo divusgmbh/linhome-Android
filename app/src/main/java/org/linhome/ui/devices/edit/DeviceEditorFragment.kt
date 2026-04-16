@@ -30,20 +30,16 @@ import androidx.databinding.ViewDataBinding
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.navArgs
-import kotlinx.android.synthetic.main.app_bar_main.*
-import kotlinx.android.synthetic.main.fragment_device_edit.view.*
-import kotlinx.android.synthetic.main.item_action_edit.view.*
-import kotlinx.android.synthetic.main.widget_round_rect_button.view.*
 import org.linhome.GenericFragment
 import org.linhome.R
 import org.linhome.customisation.Texts
 import org.linhome.customisation.Theme
 import org.linhome.databinding.FragmentDeviceEditBinding
+import org.linhome.databinding.ItemActionEditBinding
 import org.linhome.entities.Action
 import org.linhome.store.DeviceStore
 import org.linhome.ui.validators.ValidatorFactory
 import org.linhome.utils.DialogUtil
-import org.linhome.utils.cdlog
 
 class DeviceEditorFragment : GenericFragment() {
 
@@ -66,7 +62,7 @@ class DeviceEditorFragment : GenericFragment() {
         binding.model = model
         binding.validators = ValidatorFactory.Companion
 
-        binding.root.addaction.root.setOnClickListener {
+        binding.addaction.setOnClickListener {
             addAction(null)
         }
 
@@ -82,7 +78,7 @@ class DeviceEditorFragment : GenericFragment() {
             }
         }
 
-        binding.root.delete.root.setOnClickListener {
+        binding.delete.setOnClickListener {
             DialogUtil.confirm(
                 "delete_device_confirm_message",
                 { _: DialogInterface, _: Int ->
@@ -107,21 +103,35 @@ class DeviceEditorFragment : GenericFragment() {
             R.layout.item_action_edit,
             null,
             false
-        )
+        ) as ItemActionEditBinding
         binding.lifecycleOwner = this
         model.addAction(action, binding)
     }
 
+    private fun rebindActions() {
+        model.actionBindings.value?.clear()
+        model.actionsViewModels.forEach {
+            val binding = DataBindingUtil.inflate<ViewDataBinding>(
+                LayoutInflater.from(requireContext()),
+                R.layout.item_action_edit,
+                null,
+                false
+            ) as ItemActionEditBinding
+            binding.lifecycleOwner = this
+            model.bindAction(binding,it)
+        }
+    }
+
     override fun onToolbarRightButtonClicked() {
-        binding.root.name.validate()
-        binding.root.address.validate()
+        binding.name.validate()
+        binding.address.validate()
         model.actionsViewModels.forEach {
             if (it.type.value != 0)
-                it.binding.root.code.validate()
+                it.binding.code.validate()
         }
         DeviceStore.findDeviceByAddress(model.address.first.value)?.also {
             if (args.device?.id != it.id) {
-                binding.root.address.setError(
+                binding.address.setError(
                     Texts.get(
                         "device_address_already_exists",
                         "${it.name}"
@@ -142,15 +152,17 @@ class DeviceEditorFragment : GenericFragment() {
     override fun onResume() {
         super.onResume()
 
-        Theme.setIcon("icons/save", mainactivity.toolbar_right_button_image)
-        Theme.setIcon("icons/cancel", mainactivity.toolbar_left_button_image)
-        mainactivity.toolbar_left_button_title.text = Texts.get("cancel")
-        mainactivity.toolbar_right_button_title.text = Texts.get("save")
+        Theme.setIcon("icons/save", mainactivity.binding.appbar.toolbarRightButtonImage)
+        Theme.setIcon("icons/cancel", mainactivity.binding.appbar.toolbarLeftButtonImage)
+        mainactivity.binding.appbar.toolbarLeftButtonTitle.text = Texts.get("cancel")
+        mainactivity.binding.appbar.toolbarRightButtonTitle.text = Texts.get("save")
 
         mainactivity.pauseNavigation()
 
         mainactivity.toolbarViewModel.rightButtonVisible.value = true
         mainactivity.toolbarViewModel.leftButtonVisible.value = true
+
+        rebindActions()
     }
 
 }

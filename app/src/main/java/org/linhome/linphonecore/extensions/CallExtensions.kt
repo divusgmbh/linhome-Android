@@ -20,29 +20,47 @@
 
 package org.linhome.linphonecore.extensions
 
+import android.content.Context
+import android.content.Context.AUDIO_SERVICE
+import android.media.AudioManager
+import androidx.core.content.ContextCompat.getSystemService
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import org.linhome.LinhomeApplication
 import org.linhome.LinhomeApplication.Companion.coreContext
 import org.linhome.LinhomeApplication.Companion.corePreferences
 import org.linhome.store.DeviceStore
+import org.linhome.utils.DialogUtil
 import org.linphone.core.Call
 import org.linphone.core.CallParams
+import org.linphone.core.Core
 
 
 fun Call.extendedAcceptEarlyMedia() {
     if (state == Call.State.IncomingReceived) {
         val earlyMediaCallParams: CallParams? = coreContext.core.createCallParams(this)
         earlyMediaCallParams?.recordFile = callLog.historyEvent().mediaFileName
-        enableCamera(false)
+        isCameraEnabled = false
         acceptEarlyMediaWithParams(earlyMediaCallParams)
-        startRecording()
+        GlobalScope.launch(context = Dispatchers.Main) {
+            muteAudioPLayBack()
+            startRecording()
+        }
     }
 }
 
 fun Call.extendedAccept() {
+
+    if (coreContext.gsmCallActive()) {
+        DialogUtil.toast("unable_to_accept_call_gsm_call_in_progress")
+        return
+    }
+
     val inCallParams: CallParams? = coreContext.core.createCallParams(this)
     inCallParams?.recordFile = callLog.historyEvent().mediaFileName
-    enableCamera(false)
-
+    isCameraEnabled = false
+    unMuteAudioPLayBack()
     val device = DeviceStore.findDeviceByAddress(remoteAddress)
     if (device != null) {
         coreContext.core.useRfc2833ForDtmf = device.actionsMethodType == "method_dtmf_rfc_4733"
@@ -58,3 +76,11 @@ fun Call.extendedAccept() {
 }
 
 
+// Early media phase - work around to avoid playing audio back to user, but still have the stream
+fun Call.muteAudioPLayBack() {
+    speakerVolumeGain = -1000.0f
+}
+
+fun Call.unMuteAudioPLayBack() {
+    speakerVolumeGain = 0.0f
+}

@@ -17,10 +17,15 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package org.linphone.compatibility
+package org.linhome.compatibility
 
+import android.Manifest.permission.READ_PHONE_STATE
+import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.Notification
+import android.app.Service
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.BlendMode
 import android.graphics.BlendModeColorFilter
@@ -29,23 +34,62 @@ import android.graphics.drawable.Drawable
 import android.os.Build
 import android.os.FileObserver
 import android.os.Vibrator
+import android.telephony.TelephonyManager
 import android.view.WindowManager
 import androidx.core.app.NotificationManagerCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.linhome.LinhomeApplication
-import org.linhome.compatibility.Api23Compatibility
-import org.linhome.compatibility.Api25Compatibility
-import org.linhome.compatibility.Api26Compatibility
-import org.linhome.compatibility.Api28Compatibility
+import org.linphone.compatibility.Api34Compatibility
+import org.linphone.compatibility.Api35Compatibility
+import org.linphone.compatibility.PhoneStateInterface
+import org.linphone.compatibility.PhoneStateListener
+import org.linphone.compatibility.TelephonyListener
 import org.linphone.mediastream.Version
 import java.io.File
 
 
-@Suppress("DEPRECATION")
+@SuppressLint("NewApi")
 class Compatibility {
+
     companion object {
+
+        fun setupAppStartupListener(context: Context) {
+            if (Version.sdkAboveOrEqual(Version.API35_ANDROID_15_VANILLA_ICE_CREAM)) {
+                Api35Compatibility.setupAppStartupListener(context)
+            }
+        }
+
+        fun getChannelImportance(
+            notificationManager: NotificationManagerCompat,
+            channelId: String
+        ): Int {
+            if (Version.sdkAboveOrEqual(Version.API26_O_80)) {
+                return Api26Compatibility.getChannelImportance(notificationManager, channelId)
+            }
+            return NotificationManagerCompat.IMPORTANCE_DEFAULT
+        }
+
+        fun startForegroundService(context: Context, intent: Intent) {
+            if (Version.sdkAboveOrEqual(Version.API31_ANDROID_12)) {
+                Api31Compatibility.startForegroundService(context, intent)
+            } else if (Version.sdkAboveOrEqual(Version.API26_O_80)) {
+                Api26Compatibility.startForegroundService(context, intent)
+            } else {
+                Api23Compatibility.startForegroundService(context, intent)
+            }
+        }
+
+        fun startForegroundService(service: Service, notifId: Int, notif: Notification?) {
+            if (Version.sdkAboveOrEqual(Version.API31_ANDROID_12)) {
+                Api31Compatibility.startForegroundService(service, notifId, notif)
+            } else {
+                Api23Compatibility.startForegroundService(service, notifId, notif)
+            }
+        }
+
+
         fun hasPermission(context: Context, permission: String): Boolean {
             return when (Version.sdkAboveOrEqual(Version.API23_MARSHMALLOW_60)) {
                 true -> Api23Compatibility.hasPermission(context, permission)
@@ -154,7 +198,7 @@ class Compatibility {
 
 
 
-        // Lindoor
+        // Linhome
 
         fun fileObserverWithMainThreadRunnable(file: File, runnable: Runnable): FileObserver {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -175,5 +219,44 @@ class Compatibility {
                 }
             }
         }
+        fun startCallForegroundService(
+            service: Service,
+            notifId: Int,
+            notif: Notification,
+            isCallActive: Boolean
+        ) {
+            if (Version.sdkAboveOrEqual(Version.API34_ANDROID_14_UPSIDE_DOWN_CAKE)) {
+                Api34Compatibility.startCallForegroundService(service, notifId, notif, isCallActive)
+            } else {
+                startForegroundService(service, notifId, notif)
+            }
+        }
+
+        fun startDataSyncForegroundService(
+            service: Service,
+            notifId: Int,
+            notif: Notification,
+            isCallActive: Boolean
+        ) {
+            if (Version.sdkAboveOrEqual(Version.API34_ANDROID_14_UPSIDE_DOWN_CAKE)) {
+                Api34Compatibility.startDataSyncForegroundService(
+                    service,
+                    notifId,
+                    notif,
+                    isCallActive
+                )
+            } else {
+                startForegroundService(service, notifId, notif)
+            }
+        }
+
+        fun createPhoneListener(telephonyManager: TelephonyManager): PhoneStateInterface {
+            return if (Version.sdkStrictlyBelow(Version.API31_ANDROID_12)) {
+                PhoneStateListener(telephonyManager)
+            } else {
+                TelephonyListener(telephonyManager)
+            }
+        }
     }
+
 }

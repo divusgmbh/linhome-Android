@@ -9,7 +9,32 @@ Group changes to describe their impact on the project, as follows:
     Removed for deprecated features removed in this release.
     Fixed for any bug fixes.
     Security to invite users to upgrade in case of vulnerabilities.
-    
-    
-    ## [1.0.0] - Release candidate
+
+## [1.4.1]
+- SDK update to 5.4
+- Target API 36
+- Various bug fixes (including UDP transport fix)
+- Update account creation to use new Flexip Account Manager 2.x API with one time password requested inside the app
+
+## [1.3.0]
+- Migration to Flexiapi for account management
+- Update to Linphone SDK 5.3 
+
+## [1.2.0]
+- Locally defined Devices are now stored inside VCards 4.0 - inside Linphone Friend List (those can be edited / removed)
+- Devices can remotely provisionned, (they appear as read only - e.g. not deletable, not editable) inside the app.
+- Update to Linphone SDK 5.2
+
+## [1.1.0]
+
+- Update to Linphone SDK 5.0.0
+- German translation
+- Fix Force audio route to speaker on tablets
+- Use random ports
+- Fix method type on default actions
+- Fix history events - marked as read only if played
+- Fix Decline incoming call if already on a call
+- Fix Ringing (flag to allow ringing during early media + caf -> wav format) 
+
+## [1.0.0] - Release candidate
     

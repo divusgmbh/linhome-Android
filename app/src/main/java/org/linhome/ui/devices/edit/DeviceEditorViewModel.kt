@@ -26,6 +26,7 @@ import org.linhome.BR
 import org.linhome.customisation.ActionTypes
 import org.linhome.customisation.ActionsMethodTypes
 import org.linhome.customisation.DeviceTypes
+import org.linhome.databinding.ItemActionEditBinding
 import org.linhome.entities.Action
 import org.linhome.entities.Device
 import org.linhome.store.DeviceStore
@@ -116,7 +117,8 @@ class DeviceEditorViewModel : ViewModelWithTools() {
                 name.first.value!!,
                 if (address.first.value!!.startsWith("sip:") || address.first.value!!.startsWith("sips:")) address.first.value!! else "sip:${address.first.value}",
                 if (actionsMethod.value == 0) null else availableMethodTypes.get(actionsMethod.value!!).backingKey,
-                ArrayList()
+                ArrayList(),
+                false
             )
             actionsViewModels.forEach {
                 if (it.notEmpty())
@@ -147,25 +149,30 @@ class DeviceEditorViewModel : ViewModelWithTools() {
                         )
                 }
             }
-            DeviceStore.sync()
+            DeviceStore.saveLocalDevices()
         }
 
         return true
     }
 
-    fun addAction(action: Action?, binding: ViewDataBinding) {
+    fun addAction(action: Action?, binding: ItemActionEditBinding) {
         val actionViewModel = DeviceEditorActionViewModel(this, binding, MutableLiveData(actionsViewModels.size + 1))
-        binding.setVariable(BR.actionmodel, actionViewModel)
-        binding.setVariable(BR.validators, ValidatorFactory.Companion)
         action?.also {
             actionViewModel.code.first.value = action.code
             actionViewModel.type.value = indexByBackingKey(action.type, availableActionTypes)
         }
         actionsViewModels.add(actionViewModel)
-        actionBindings.value?.add(binding)
+        bindAction(binding,actionViewModel)
         refreshActions.postValue(true)
     }
 
+    fun bindAction(binding: ItemActionEditBinding, actionViewModel:DeviceEditorActionViewModel) {
+        binding.setVariable(BR.actionmodel, actionViewModel)
+        binding.setVariable(BR.validators, ValidatorFactory.Companion)
+        actionViewModel.binding = binding
+        actionBindings.value?.add(binding)
+        refreshActions.postValue(true)
+    }
 
     fun removeActionViewModel(viewModel: DeviceEditorActionViewModel) {
         actionsViewModels.remove(viewModel)

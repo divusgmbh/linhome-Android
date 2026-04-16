@@ -22,13 +22,27 @@ package org.linhome.ui.devices
 
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import org.linhome.LinhomeApplication
 import org.linhome.entities.Device
 import org.linhome.store.DeviceStore
+import org.linphone.core.*
+import org.linphone.mediastream.Log
 
 class DevicesViewModel : ViewModel() {
-    val devices = MutableLiveData<ArrayList<Device>>().apply {
+    var devices = MutableLiveData<ArrayList<Device>>().apply {
         value = DeviceStore.devices
     }
     var selectedDevice = MutableLiveData<Device?>()
+    var syncFailed = MutableLiveData<Boolean>(false)
+
+    init {
+        DeviceStore.mutableDevices = devices
+        DeviceStore.syncFailed = syncFailed
+    }
+
+    override fun onCleared() {
+        DeviceStore.mutableDevices = null
+        DeviceStore.syncFailed = null
+    }
 
 }

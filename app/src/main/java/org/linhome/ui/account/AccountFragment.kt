@@ -30,11 +30,9 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
-import kotlinx.android.synthetic.main.fragment_account.view.*
-import kotlinx.android.synthetic.main.widget_round_rect_button.view.*
 import org.linhome.LinhomeApplication
 import org.linhome.databinding.FragmentAccountBinding
-import org.linhome.entities.Account
+import org.linhome.entities.LinhomeAccount
 import org.linhome.utils.DialogUtil
 
 
@@ -50,24 +48,24 @@ class AccountFragment : Fragment() {
         binding.model = model
         binding.lifecycleOwner  = this
 
-        binding.root.refresh_registers.root.setOnClickListener {
+        binding.refreshRegisters.setOnClickListener {
             model.refreshRegisters()
         }
 
-        binding.root.change_linhome_password.root.setOnClickListener {
+        binding.changeLinhomePassword.setOnClickListener {
             gotoFreeSip()
         }
 
-        binding.root.delete_linhome_account.root.setOnClickListener {
+        binding.deleteLinhomeAccount.setOnClickListener {
             gotoFreeSip()
         }
 
-        binding.root.disconnect.root.setOnClickListener {
+        binding.disconnect.setOnClickListener {
             DialogUtil.confirm(
                 "menu_disconnect",
                 "disconnect_confirm_message",
                 { _: DialogInterface, _: Int ->
-                    Account.disconnect()
+                    LinhomeAccount.disconnect()
                     findNavController().navigateUp()
                 })
         }

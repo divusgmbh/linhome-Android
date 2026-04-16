@@ -20,16 +20,17 @@
 
 package org.linhome.ui.call
 
+import android.content.res.Configuration
 import android.os.Bundle
+import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.view.updateLayoutParams
 import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
-import kotlinx.android.synthetic.main.activity_call_incoming.view.*
-import kotlinx.android.synthetic.main.chunk_call_device_icon_or_video.view.*
 import org.linhome.LinhomeApplication.Companion.coreContext
 import org.linhome.R
+import org.linhome.compatibility.Compatibility
 import org.linhome.databinding.ActivityCallIncomingBinding
-import org.linphone.compatibility.Compatibility
 import org.linphone.core.Call
 
 
@@ -47,7 +48,7 @@ class CallIncomingActivity : CallGenericActivity() {
 
         binding = DataBindingUtil.setContentView(
             this,
-            R.layout.activity_call_incoming
+            org.linhome.R.layout.activity_call_incoming
         ) as ActivityCallIncomingBinding
         binding.lifecycleOwner = this
 
@@ -61,21 +62,38 @@ class CallIncomingActivity : CallGenericActivity() {
                     else -> finish()
                 }
             })
-            binding.root.videotogglecollapsed.setOnClickListener {
-                coreContext.core.nativeVideoWindowId = binding.root.videofullscreen
+            binding.chunkCallDeviceIconOrVideo.videotogglecollapsed.setOnClickListener {
+                coreContext.core.nativeVideoWindowId = binding.videofullscreen
                 callViewModel.toggleVideoFullScreen()
             }
-            binding.root.videotogglefullscreen.setOnClickListener {
-                coreContext.core.nativeVideoWindowId = binding.root.videocollapsed
+            binding.videotogglefullscreen.setOnClickListener {
+                coreContext.core.nativeVideoWindowId = binding.chunkCallDeviceIconOrVideo.videocollapsed
                 callViewModel.toggleVideoFullScreen()
             }
+            callViewModel.videoSize.observe(this, Observer { size ->
+                binding.chunkCallVideoOrIcon.updateLayoutParams<ConstraintLayout.LayoutParams> {
+                    dimensionRatio = "H,${size.width}:${size.height}"
+                    matchConstraintPercentWidth = computePercentageWidth(size,250) //  Space for buttons and header
+                }
+            })
         } ?: finish()
+
+
     }
 
     override fun onResume() {
         super.onResume()
         coreContext.core.nativeVideoWindowId =
-            if (callViewModel.videoFullScreen.value!!) binding.root.videofullscreen else binding.root.videocollapsed
+            if (callViewModel.videoFullScreen.value!!) binding.videofullscreen else binding.chunkCallDeviceIconOrVideo.videocollapsed
+    }
+
+    override fun onPause() {
+        coreContext.core.nativeVideoWindowId = null
+        super.onPause()
+    }
+
+    override fun onBackPressed() {
+
     }
 
 }

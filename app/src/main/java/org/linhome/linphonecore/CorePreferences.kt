@@ -21,15 +21,16 @@ package org.linhome.linphonecore
 
 import android.content.Context
 import org.linhome.LinhomeApplication.Companion.coreContext
+import org.linhome.compatibility.Compatibility
 import org.linhome.entities.Action
-import org.linphone.compatibility.Compatibility
+import org.linhome.linphonecore.extensions.getString
 import org.linphone.core.Config
 import org.linphone.mediastream.Log
 import java.io.File
 import java.io.FileOutputStream
 import java.math.BigInteger
 import java.security.MessageDigest
-import org.linhome.linphonecore.extensions.getString
+import kotlin.text.Typography.section
 
 class CorePreferences constructor(private val context: Context) {
     private var _config: Config? = null
@@ -41,6 +42,12 @@ class CorePreferences constructor(private val context: Context) {
 
 
     /* Linhome */
+
+    val automaticallyCreatePushGatewayAccount: Boolean
+        get() {
+            return config.getBool("app", "auto_create_push_gateway_account", false)
+        }
+
     var showLatestSnapshot: Boolean
         get() {
             return config.getBool("devices", "latest_snapshot", true)
@@ -64,22 +71,25 @@ class CorePreferences constructor(private val context: Context) {
         get() = config.getString("default_actions", "action_1_type", null)?.let { type ->
             config.getString("default_actions", "action_1_code", null)?.let { code ->
                 Action(type,code)
-            } ?: null
-        } ?:null
+            }
+        }
 
     val defaultAction2: Action?
         get() = config.getString("default_actions", "action_2_type", null)?.let { type ->
             config.getString("default_actions", "action_2_code", null)?.let { code ->
                 Action(type,code)
-            } ?: null
-        } ?:null
+            }
+        }
 
     val defaultAction3: Action?
         get() = config.getString("default_actions", "action_3_type", null)?.let { type ->
             config.getString("default_actions", "action_3_code", null)?.let { code ->
                 Action(type,code)
-            } ?: null
-        } ?:null
+            }
+        }
+
+    val flexiApiTimeOutSeconds: Int
+        get() = config.getInt( "assistant",  "flexiapi_token_request_timeout_seconds", 10)
 
 
     // Todo - review necessary portion (copied from Linphone)
@@ -103,6 +113,12 @@ class CorePreferences constructor(private val context: Context) {
             config.setBool("app", "keep_service_alive", value)
         }
 
+
+    /* Audio */
+
+    val availableAudioCodecs = arrayOf("pcmu","pcma","opus","g729")
+    val enabledVideoCodecsByDefault = arrayOf("h264")
+    val enabledAudioCodecsByDefault = arrayOf("pcmu","pcma","opus")
 
     /* Video */
 
@@ -138,16 +154,8 @@ class CorePreferences constructor(private val context: Context) {
             config.setBool("app", "call_overlay", value)
         }
 
-
-
-    var xmlRpcServerUrl: String?
-        get() = config.getString("assistant", "xmlrpc_url", null)
-        set(value) {
-            config.setString("assistant", "xmlrpc_url", value)
-        }
-
-    var passwordAlgo: String?
-        get() = config.getString("assistant", "password_algo", null)
+    var passwordAlgo: String
+        get() = config.getString("assistant", "password_algo", "SHA-256")!!
         set(value) {
             config.setString("assistant", "password_algo", value)
         }
@@ -158,6 +166,13 @@ class CorePreferences constructor(private val context: Context) {
             config.setString("assistant", "domain", value)
         }
 
+    /* VCard */
+
+    var vcardListUrl: String?
+        get() = config.getString("misc", "contacts-vcard-list", null)
+        set(value) {
+            config.setString("misc", "contacts-vcard-list", value)
+        }
 
     /* Assets stuff */
 
@@ -219,10 +234,34 @@ class CorePreferences constructor(private val context: Context) {
     }
 
     fun encryptedPass(user: String, clearPass: String): String {
-        val md = MessageDigest.getInstance(passwordAlgo?.toUpperCase())
+        val md = MessageDigest.getInstance(passwordAlgo.lowercase())
         return BigInteger(
             1,
             md.digest(("${user}:${loginDomain}:${clearPass}").toByteArray())
         ).toString(16).padStart(32, '0')
     }
+
+    var flexiApiToken: String?
+        get () {
+            val token = config.getString("account_creator", "account_creation_token", "")
+            if (token.isNullOrEmpty()) {
+                return null
+            }
+            val tokenValidity = config.getInt64( "account_creator","account_creation_token_retry_minutes", 60)
+            val tokenStoreTime = config.getInt64( "account_creator", "account_creation_token_store_time", 0)
+            val epoch = System.currentTimeMillis() / 1000
+            if (tokenStoreTime + tokenValidity * 60 > epoch) {
+                return token
+            } else {
+                config.setString("account_creator", "account_creation_token", "")
+                return null
+            }
+        }
+        set(value)  {
+            config.setString("account_creator", "account_creation_token", value)
+            val epoch = System.currentTimeMillis() / 1000
+            config.setInt64("account_creator","account_creation_token_store_time",
+                (if (value != null) epoch else 0).toInt()
+            )
+        }
 }

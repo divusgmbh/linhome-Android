@@ -23,7 +23,6 @@ package org.linhome.customisation
 import org.linhome.customisation.Customisation.actionTypesConfig
 import org.linhome.linphonecore.extensions.getString
 import org.linhome.ui.widgets.SpinnerItem
-import java.util.*
 
 object ActionTypes {
     var spinnerItems: ArrayList<SpinnerItem> = ArrayList()
@@ -52,6 +51,10 @@ object ActionTypes {
         return actionTypesConfig.let { config ->
             config.getString(typeKey, "icon", nonNullDefault = typeKey )
         }
+    }
+
+    fun isValid(typeKey: String):  Boolean {
+        return !actionTypesConfig.getString(typeKey, "textkey", "-").equals("-")
     }
 
 }

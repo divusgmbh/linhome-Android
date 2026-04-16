@@ -6,7 +6,6 @@
     <entry name="quality_reporting_collector" overwrite="true">sip:voip-metrics@sip.linphone.org;transport=tls</entry>
     <entry name="quality_reporting_enabled" overwrite="true">1</entry>
     <entry name="quality_reporting_interval" overwrite="true">180</entry>
-    <entry name="reg_expires" overwrite="true">31536000</entry>
     <entry name="reg_identity" overwrite="true">sip:?@linhome.org</entry>
     <entry name="reg_proxy" overwrite="true">&lt;sip:sip.linhome.org;transport=tls&gt;</entry>
     <entry name="reg_route" overwrite="true">&lt;sip:sip.linhome.org;transport=tls&gt;</entry>
@@ -17,6 +16,9 @@
   <section name="nat_policy_default_values">
     <entry name="stun_server" overwrite="true"></entry>
     <entry name="protocols" overwrite="true"></entry>
+  </section>
+  <section name="misc">
+      <entry name="contacts-vcard-list" overwrite="true">https://subscribe.linhome.org/contacts/vcard</entry>
   </section>
   <section name="assistant">
     <entry name="domain" overwrite="true">sip.linhome.org</entry>

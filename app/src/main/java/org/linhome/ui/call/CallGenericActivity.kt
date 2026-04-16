@@ -20,11 +20,15 @@
 
 package org.linhome.ui.call
 
+import android.content.res.Resources
 import android.os.Bundle
 import android.view.View
+import android.view.WindowManager
+import com.google.android.gms.common.images.Size
 import org.linhome.GenericActivity
 import org.linhome.LinhomeApplication.Companion.coreContext
 import org.linphone.core.Call
+import org.linphone.core.tools.Log
 
 
 abstract class CallGenericActivity : GenericActivity() {
@@ -38,12 +42,30 @@ abstract class CallGenericActivity : GenericActivity() {
         val uiOptions: Int =
             View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
         decorView.systemUiVisibility = uiOptions
+        window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+
 
         call = intent.getStringExtra("callId")?.let { callId ->
+            if (intent.getBooleanExtra("closeAppUponCallFinish", false)) {
+                coreContext.closeAppUponCallFinish = true
+            }
             coreContext.core.calls.filter { it.callLog.callId.equals(callId) }.firstOrNull()
         }
-
     }
 
-
+   companion object {
+       fun computePercentageWidth(videoSize: Size, dpReservedHeight: Int): Float {
+           val displayMetrics = Resources.getSystem().displayMetrics
+           val screenHeight: Int = displayMetrics.heightPixels
+           val screenWidth: Int = displayMetrics.widthPixels
+           val pxReservedHeight = dpReservedHeight * displayMetrics.density
+           val availableHeightPx = screenHeight - pxReservedHeight
+           val videoRatio: Float = videoSize.width.toFloat() / videoSize.height.toFloat()
+           val availableWidthPx = availableHeightPx * videoRatio
+           val result = availableWidthPx / screenWidth
+           Log.i("Computing video metrics : screen=$screenWidth/$screenHeight videoSize=${videoSize.width}/${videoSize.height} reservedpxheight=$pxReservedHeight computed withpct=$result")
+           Log.i("Computing video metrics : video height should not exceed : $availableHeightPx and is ${result * screenWidth}")
+           return if (result > 0.95f) 0.95f else result
+       }
+   }
 }

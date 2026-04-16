@@ -24,29 +24,30 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import org.linhome.LinhomeApplication
 import org.linhome.customisation.Texts
-import org.linhome.entities.Account
+import org.linhome.entities.LinhomeAccount
 import org.linhome.linphonecore.extensions.toHumanReadable
-import org.linphone.core.*
+import org.linphone.core.Core
+import org.linphone.core.CoreListenerStub
+import org.linphone.core.RegistrationState
 
 class AccountViewModel : ViewModel() {
-    val account = Account.get()
-    val pushGw = Account.pushGateway()
+    val account = LinhomeAccount.get()
+    val pushGw = LinhomeAccount.pushGateway()
     val accountDesc = MutableLiveData(getDescription("account_info",account))
     val pushGWDesc = MutableLiveData(getDescription("push_account_info",pushGw))
 
     private val coreListener = object : CoreListenerStub() {
-        override fun onRegistrationStateChanged(
-            lc: Core,
-            cfg: ProxyConfig,
-            cstate: RegistrationState?,
+
+        override fun onAccountRegistrationStateChanged(
+            core: Core,
+            cfg: org.linphone.core.Account,
+            state: RegistrationState?,
             message: String
         ) {
-            if (cfg != null) {
-                if (cfg == account)
-                    accountDesc.value = getDescription("account_info",account)
-                if (cfg == pushGw)
-                    pushGWDesc.value = getDescription("push_account_info",pushGw)
-            }
+            if (cfg == account)
+                accountDesc.value = getDescription("account_info",account)
+            if (cfg == pushGw)
+                pushGWDesc.value = getDescription("push_account_info",pushGw)
         }
     }
 
@@ -65,14 +66,20 @@ class AccountViewModel : ViewModel() {
     }
 
 
-    fun getDescription(key:String, proxyConfig: ProxyConfig?): String? {
-        return proxyConfig?.state?.toHumanReadable()?.let {
-            proxyConfig?.identityAddress?.asStringUriOnly()?.let { it1 ->
+    fun getDescription(key:String, account: org.linphone.core.Account?): String? {
+        return account?.state?.toHumanReadable()?.let {
+            account?.params?.identityAddress?.asStringUriOnly()?.let { it1 ->
                 Texts.get(key, it1,
                     it
                 )
             }
         } ?: Texts.get("no_account_configured")
+    }
+
+    fun isLinhome() : Boolean {
+        return LinhomeAccount.get()?.let {
+            it.params.domain == LinhomeApplication.corePreferences.loginDomain
+        }?:false
     }
 
 
