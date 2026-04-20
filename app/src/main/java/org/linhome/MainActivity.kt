@@ -364,6 +364,11 @@ class MainActivity : GenericActivity() {
         super.onResume()
         if (LinhomeApplication.coreContext.closeAppUponCallFinish) {
             LinhomeApplication.coreContext.closeAppUponCallFinish = false
+
+            val intent = Intent(this, MainActivity::class.java)
+            // Clear the splash from the history so 'Back' doesn't return here
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startActivity(intent)
             finish()
         }
     }
