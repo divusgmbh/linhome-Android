@@ -20,33 +20,99 @@
 
 package org.linhome.linphonecore.extensions
 
-import android.content.Context
-import android.content.Context.AUDIO_SERVICE
-import android.media.AudioManager
-import androidx.core.content.ContextCompat.getSystemService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import org.linhome.LinhomeApplication
 import org.linhome.LinhomeApplication.Companion.coreContext
 import org.linhome.LinhomeApplication.Companion.corePreferences
 import org.linhome.store.DeviceStore
+import org.linhome.store.HistoryEventStore
 import org.linhome.utils.DialogUtil
 import org.linphone.core.Call
 import org.linphone.core.CallParams
-import org.linphone.core.Core
+import org.linphone.core.MediaDirection
+import android.os.Handler
+import android.os.Looper
+import org.linphone.core.CallListenerStub
 
+private var rtRunnable: Runnable? = null
+private val rtHandler = Handler(Looper.getMainLooper())
+
+private var isRecordRunning: Boolean = false
 
 fun Call.extendedAcceptEarlyMedia() {
-    if (state == Call.State.IncomingReceived) {
+    if (state == Call.State.IncomingReceived || state == Call.State.IncomingEarlyMedia) {
         val earlyMediaCallParams: CallParams? = coreContext.core.createCallParams(this)
         earlyMediaCallParams?.recordFile = callLog.historyEvent().mediaFileName
-        isCameraEnabled = false
+
+        // Optimize for early media
+        earlyMediaCallParams?.setAudioEnabled(true) // MUST BE TRUE OTHERWISE RECORDING IS NOT DONE BY THE SDK
+        earlyMediaCallParams?.setAudioDirection(MediaDirection.RecvOnly)
+        earlyMediaCallParams?.setCameraEnabled(false)
+        earlyMediaCallParams?.setEarlyMediaSendingEnabled(true)
+        earlyMediaCallParams?.setMicEnabled(false)
+        earlyMediaCallParams?.setVideoEnabled(true)
+        earlyMediaCallParams?.setVideoDirection(MediaDirection.RecvOnly)
+
         acceptEarlyMediaWithParams(earlyMediaCallParams)
         GlobalScope.launch(context = Dispatchers.Main) {
             muteAudioPLayBack()
-            startRecording()
+            extendedStartRecordingWithDuration()
         }
+    }
+}
+
+fun Call.durationStopRecording(){
+    stopRecordTimer()
+    stopRecording()
+    val filePath = params.recordFile
+    // Temporary set the record file name empty to force stop recording
+    params.recordFile = ""
+    // Set the record file name again into call params
+    params.recordFile = filePath
+}
+
+fun Call.extendedClose(){
+    stopRecordTimer()
+    stopRecording()
+    HistoryEventStore.stripAudio(params.recordFile!!)
+    HistoryEventStore.rotateRecordings(false)
+    isRecordRunning = false
+}
+
+fun Call.extendedStartRecordingWithDuration() {
+    val duration: Long = 5500 // recording max. duration im ms
+    if (isRecordRunning) {
+        return
+    }
+    isRecordRunning = true
+    stopRecordTimer()
+    startRecording()
+    // Wait for first frame before starting timer
+    this.addListener(object : CallListenerStub() {
+        override fun onNextVideoFrameDecoded(call: Call) {
+            org.linphone.core.tools.Log.i("[CallExtensions] start recording on first frame received")
+            rtRunnable = Runnable {
+                org.linphone.core.tools.Log.i("[CallExtensions] stop recording due max. duration reached: ${duration}")
+                call.durationStopRecording()
+            }
+            rtRunnable?.let {
+                rtHandler.postDelayed(it, duration)
+            }
+            // Remove listener so it doesn't fire for every single frame
+            call.removeListener(this)
+        }
+    })
+    // request frame ready event
+    this.requestNotifyNextVideoFrameDecoded()
+
+
+}
+
+fun Call.stopRecordTimer() {
+    rtRunnable?.let {
+        rtHandler.removeCallbacks(it)
+        rtRunnable = null
     }
 }
 
@@ -69,10 +135,10 @@ fun Call.extendedAccept() {
         coreContext.core.useRfc2833ForDtmf = corePreferences.defaultActionsMethodType == "method_dtmf_rfc_4733"
         coreContext.core.useInfoForDtmf = corePreferences.defaultActionsMethodType == "method_dtmf_sip_info"
     }
-
     acceptWithParams(inCallParams)
-    if (!isRecording)
-        startRecording()
+    if (!isRecordRunning) {
+        extendedStartRecordingWithDuration()
+    }
 }
 
 

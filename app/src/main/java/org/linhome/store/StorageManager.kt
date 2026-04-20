@@ -45,6 +45,9 @@ object StorageManager {
             devicesThumnailPath.mkdirs()
         if (!callsRecordingsDir.exists())
             callsRecordingsDir.mkdirs()
+        // Initialize history event store on startup for being ready when receiving calls
+        // This is forcing the initialization also, if the call log is still empty
+        HistoryEventStore.initialize()
     }
 
 

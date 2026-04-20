@@ -143,7 +143,8 @@ class CallViewModel(val call: Call) : ViewModel() {
                 call.extendedAcceptEarlyMedia()
             } else
                 if (cstate == Call.State.StreamsRunning && call.callLog?.dir == Call.Dir.Outgoing && !call.isRecording) {
-                    call.startRecording()
+                    //call.startRecording()
+                    call.extendedStartRecordingWithDuration()
                 }
         }
     }

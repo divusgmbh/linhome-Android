@@ -26,7 +26,6 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
-import android.view.TextureView
 import android.widget.RemoteViews
 import androidx.annotation.RequiresPermission
 import androidx.core.app.NotificationCompat
@@ -64,8 +63,7 @@ import org.linphone.core.CoreListenerStub
 import org.linphone.core.tools.Log
 import java.util.*
 import kotlin.concurrent.fixedRateTimer
-
-
+import org.linhome.linphonecore.extensions.extendedClose
 private class Notifiable(val notificationId: Int) {
     val messages: ArrayList<NotifiableMessage> = arrayListOf()
 
@@ -93,7 +91,6 @@ class NotificationsManager(private val context: Context) {
         private const val MISSED_CALLS_NOTIF_ID = 2
     }
 
-
     private val notificationManager: NotificationManagerCompat by lazy {
         NotificationManagerCompat.from(context)
     }
@@ -103,6 +100,8 @@ class NotificationsManager(private val context: Context) {
     private var currentForegroundServiceNotificationId: Int = 0
     private var serviceNotification: Notification? = null
     var service: CoreService? = null
+
+    private var isEarlyMediaRecordRunning: Boolean = false
 
     private val coreListener: CoreListenerStub = object : CoreListenerStub() {
         @RequiresPermission("android.permission.POST_NOTIFICATIONS")
@@ -114,13 +113,17 @@ class NotificationsManager(private val context: Context) {
         ) {
             if (call == null) return
             Log.i("[Notifications Manager] Call state changed [$state]")
-
             when (state) {
                 Call.State.IncomingEarlyMedia, Call.State.IncomingReceived -> displayIncomingCallNotification(
                     call
                 )
-                Call.State.End, Call.State.Error -> dismissCallNotification(call)
+                Call.State.End, Call.State.Error -> {
+                    call.extendedClose()
+                    dismissCallNotification(call)
+                    isEarlyMediaRecordRunning = false
+                }
                 Call.State.Released -> {
+                    call.extendedClose()
                     if (call.callLog?.status == Call.Status.Missed) {
                         displayMissedCallNotification(call)
                     } else if (call.callLog?.status == Call.Status.DeclinedElsewhere) {
@@ -128,12 +131,12 @@ class NotificationsManager(private val context: Context) {
                     } else if (call.callLog?.status == Call.Status.AcceptedElsewhere) {
                         displayElsewhere(call,false)
                     }
+                    isEarlyMediaRecordRunning = false
                 }
                 else -> displayCallNotification(call)
             }
         }
     }
-
 
     var fileLenght = 0L
     var incomingCallSnapshotTimer: Timer? = null
@@ -176,7 +179,6 @@ class NotificationsManager(private val context: Context) {
 
     init {
         notificationManager.cancelAll()
-
         Compatibility.createNotificationChannels(context, notificationManager)
     }
 
@@ -422,6 +424,8 @@ class NotificationsManager(private val context: Context) {
                 .setWhen(System.currentTimeMillis())
                 .setShowWhen(true)
                 .setOngoing(true)
+                .setSound(null)
+                .setDefaults(0)
                 .setColor(ContextCompat.getColor(context, R.color.color_a))
                 .build()
         return serviceNotification;
@@ -491,7 +495,7 @@ class NotificationsManager(private val context: Context) {
 
         val incomingCallNotificationIntent = Intent(context, CallIncomingActivity::class.java)
         incomingCallNotificationIntent.putExtra("callId", call.callLog.callId)
-        incomingCallNotificationIntent.putExtra("closeAppUponCallFinish",true)
+        incomingCallNotificationIntent.putExtra("closeAppUponCallFinish", true)
         incomingCallNotificationIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         val pendingIntent = PendingIntent.getActivity(
             context,
@@ -510,7 +514,7 @@ class NotificationsManager(private val context: Context) {
                 .setStyle(NotificationCompat.DecoratedCustomViewStyle())
                 .setSmallIcon(R.drawable.notification_phone)
                 .setContentTitle(displayName)
-                .setContentText(Texts.get(if (hasVideo)  "notif_incoming_call_video" else "notif_incoming_call_audio"))
+                .setContentText(Texts.get(if (hasVideo) "notif_incoming_call_video" else "notif_incoming_call_audio"))
                 .setContentIntent(pendingIntent)
                 .setCategory(NotificationCompat.CATEGORY_CALL)
                 .setPriority(NotificationCompat.PRIORITY_MAX)
@@ -519,6 +523,8 @@ class NotificationsManager(private val context: Context) {
                 .setAutoCancel(false)
                 .setShowWhen(true)
                 .setOngoing(true)
+                .setSound(null)
+                .setDefaults(0)
                 .setColor(ContextCompat.getColor(context, R.color.color_a))
                 .setFullScreenIntent(pendingIntent, true)
                 .addAction(getCallDeclineAction(notifiable.notificationId))
@@ -528,7 +534,7 @@ class NotificationsManager(private val context: Context) {
         if (!coreContext.gsmCallActive()) {
             val notificationTrampolineActivityIntent =
                 Intent(context.applicationContext, MainActivity::class.java)
-            notificationTrampolineActivityIntent.putExtra("acceptCall",true)
+            notificationTrampolineActivityIntent.putExtra("acceptCall", true)
             val resultPendingIntent = TaskStackBuilder.create(context).run {
                 addNextIntentWithParentStack(notificationTrampolineActivityIntent)
                 getPendingIntent(
@@ -536,7 +542,11 @@ class NotificationsManager(private val context: Context) {
                             PendingIntent.FLAG_IMMUTABLE
                 )
             }
-            notificationBuilder.addAction(R.drawable.notification_phone, Texts.get("call_button_accept"), resultPendingIntent)
+            notificationBuilder.addAction(
+                R.drawable.notification_phone,
+                Texts.get("call_button_accept"),
+                resultPendingIntent
+            )
         }
 
         val notification = notificationBuilder.build()
@@ -548,17 +558,20 @@ class NotificationsManager(private val context: Context) {
         if (useAsForeground) {
             startForeground(notifiable.notificationId, notification, false)
         }
-
-        val fakeTextureView = TextureView(LinhomeApplication.instance.applicationContext)
+        /*val fakeTextureView = TextureView(LinhomeApplication.instance.applicationContext)
         coreContext.core.nativeVideoWindowId = fakeTextureView
+        */
         call.addListener(callListener)
-        GlobalScope.launch(context = Dispatchers.Main) {
-            call.extendedAcceptEarlyMedia()
-            scheduleSnapShots(call)
+
+        if (!isEarlyMediaRecordRunning) {
+            //if (!LinhomeApplication.someActivityRunning) {
+            if (call.state == Call.State.IncomingReceived) {
+                isEarlyMediaRecordRunning = true
+                call.extendedAcceptEarlyMedia()
+                scheduleSnapShots(call)
+            }
         }
-
     }
-
 
     fun scheduleSnapShots(call: Call) {
         incomingCallSnapshotTimer = fixedRateTimer("timer", false, 1000, 1000) {
@@ -602,6 +615,8 @@ class NotificationsManager(private val context: Context) {
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setWhen(System.currentTimeMillis())
             .setShowWhen(true)
+            .setSound(null)
+            .setDefaults(0)
             .setNumber(coreContext.core.missedCount())
             .setColor(Theme.getColor("color_s"))
             .build()
@@ -628,6 +643,8 @@ class NotificationsManager(private val context: Context) {
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setWhen(System.currentTimeMillis())
             .setShowWhen(true)
+            .setSound(null)
+            .setDefaults(0)
             .setNumber(coreContext.core.missedCount())
             .setColor(Theme.getColor("color_s"))
             .build()
@@ -651,6 +668,7 @@ class NotificationsManager(private val context: Context) {
                 stringResourceId = Texts.get("notif_outgoing_call")
                 iconResourceId = R.drawable.notification_phone
             }
+
             else -> {
                 callActivity = CallInProgressActivity::class.java
                 stringResourceId = Texts.get("notif_in_call")
@@ -685,6 +703,8 @@ class NotificationsManager(private val context: Context) {
             .setWhen(System.currentTimeMillis())
             .setShowWhen(true)
             .setOngoing(true)
+            .setSound(null)
+            .setDefaults(0)
             .setColor(Theme.getColor("color_s"))
             .addAction(getCallDeclineAction(notifiable.notificationId))
             .build()
@@ -722,6 +742,4 @@ class NotificationsManager(private val context: Context) {
             hangupPendingIntent
         ).build()
     }
-
-
 }

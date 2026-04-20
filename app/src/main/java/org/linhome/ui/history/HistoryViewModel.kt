@@ -26,6 +26,7 @@ import org.linhome.LinhomeApplication
 import org.linhome.linphonecore.extensions.callLogsWithNonEmptyCallId
 import org.linhome.linphonecore.extensions.historyEvent
 import org.linhome.store.HistoryEventStore
+import org.linhome.store.StorageManager
 import org.linphone.core.CallLog
 import org.linphone.core.Core
 import org.linphone.core.CoreListenerStub
@@ -46,6 +47,11 @@ class HistoryViewModel : ViewModel() {
     init {
         LinhomeApplication.coreContext.core.addListener(coreListener)
         history = MutableLiveData(LinhomeApplication.coreContext.core.callLogsWithNonEmptyCallId())
+        HistoryEventStore.syncModel.observeForever {
+            // sync model from history event store when doing rotation of files
+            val freshLogs = ArrayList(LinhomeApplication.coreContext.core.callLogs.toList())
+            history.postValue(freshLogs)
+        }
     }
 
 

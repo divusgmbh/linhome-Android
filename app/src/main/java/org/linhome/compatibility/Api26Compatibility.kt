@@ -74,6 +74,7 @@ class Api26Compatibility {
             channel.enableVibration(false)
             channel.enableLights(false)
             channel.setShowBadge(false)
+            channel.setSound(null,null)
             notificationManager.createNotificationChannel(channel)
         }
 
@@ -92,6 +93,7 @@ class Api26Compatibility {
             channel.enableVibration(true)
             channel.enableLights(true)
             channel.setShowBadge(true)
+            channel.setSound(null,null)
             channel.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             notificationManager.createNotificationChannel(channel)
         }
