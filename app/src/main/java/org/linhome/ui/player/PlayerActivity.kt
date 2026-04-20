@@ -21,6 +21,7 @@
 package org.linhome.ui.player
 
 import android.graphics.SurfaceTexture
+import android.net.Uri
 import android.os.Bundle
 import android.os.SystemClock
 import android.view.TextureView
@@ -37,10 +38,10 @@ import org.linhome.databinding.ActivityPlayerBinding
 import org.linhome.linphonecore.extensions.historyEvent
 import org.linhome.store.HistoryEventStore
 import org.linhome.ui.call.CallGenericActivity
-import org.linhome.ui.call.CallGenericActivity.Companion.computePercentageWidth
 import org.linhome.utils.getImageDimension
 import org.linphone.core.Player
 import org.linphone.core.tools.Log
+import java.io.File
 
 
 class PlayerActivity : GenericActivity() {
@@ -83,9 +84,11 @@ class PlayerActivity : GenericActivity() {
                             finish()
                         }
                         setupPlayerControl(binding, playerViewModel)
+
                         if (event.hasVideo) {
                             setTextureView(binding.video, player, seekTo, playing)
                         }
+
                         HistoryEventStore.markAsRead(event.id)
                         binding.chunkPlayerControls?.play?.setOnClickListener {
                             togglePlay()
@@ -94,7 +97,8 @@ class PlayerActivity : GenericActivity() {
                             binding.video.updateLayoutParams<ConstraintLayout.LayoutParams> {
                                 dimensionRatio = "H,${size.width}:${size.height}"
                                 matchConstraintPercentWidth = CallGenericActivity.computePercentageWidth(size,200) //  240Dp left for buttons and header
-                            }                        }
+                            }
+                         }
                     }
             }
 
@@ -140,7 +144,9 @@ class PlayerActivity : GenericActivity() {
     fun setTextureView(textureView: TextureView, player: Player, seekTo: Int, playing: Boolean) {
         Log.i("[Player] Is TextureView available? ${textureView.isAvailable}")
         if (textureView.isAvailable) {
-            player.setWindowId(textureView.surfaceTexture)
+
+            textureView.visibility = View.VISIBLE
+            textureView.requestLayout() // Force Android to recalculate the 0dp bounds
         } else {
             textureView.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
                 override fun onSurfaceTextureSizeChanged(
@@ -162,14 +168,16 @@ class PlayerActivity : GenericActivity() {
                     width: Int,
                     height: Int
                 ) {
-                    Log.i("[Player] Surface texture should be available now seekTo = ${seekTo}")
+                    textureView.visibility = View.VISIBLE
+                    textureView.requestLayout() // Force Android to recalculate the 0dp bounds
+
                     player.setWindowId(textureView.surfaceTexture)
+
                     playerViewModel.playFromStart()
                 }
             }
         }
     }
-
 
     override fun onPause() {
         playingOnPause = playerViewModel.playing.value!!
@@ -191,5 +199,4 @@ class PlayerActivity : GenericActivity() {
         }
         playerViewModel.togglePlay()
     }
-
 }
