@@ -17,6 +17,7 @@ upload_bw=0
 
 [video]
 size=vga
+video_during_early_media=1
 
 [app]
 tunnel=disabled
@@ -29,8 +30,9 @@ host=
 port=443
 
 [misc]
-version_check_url_root=https://www.linphone.org/releases
-log_collection_upload_server_url=https://www.linphone.org:444/lft.php
+version_check_url_root=https://sip.divus.eu/linhomereleases
+log_collection_upload_server_url=https://sip.divus.eu/logs
+background_mode=0
 history_max_size=100
 
 

@@ -25,8 +25,12 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.content.Intent
+import android.net.Uri
+import android.graphics.Paint
 import org.linhome.GenericFragment
 import org.linhome.R
+import org.linhome.customisation.Texts
 import org.linhome.databinding.FragmentAssistantRootBinding
 import org.linhome.entities.LinhomeAccount
 import org.linhome.utils.DialogUtil
@@ -51,6 +55,15 @@ class AssistantRootFragment : GenericFragment() {
         }
         binding.remote.setOnClickListener {
             navigateToCompotent(R.id.navigation_assistant_remote_root)
+        }
+        // Account registration hint and link
+        binding.registerHintUrl.paintFlags = binding.registerHintUrl.paintFlags or Paint.UNDERLINE_TEXT_FLAG
+        binding.registerHintUrl.setOnClickListener {
+            val browserIntent = Intent(
+                Intent.ACTION_VIEW,
+                Uri.parse(Texts.get("register_hint_link"))
+            )
+            startActivity(browserIntent)
         }
         return binding.root
     }
