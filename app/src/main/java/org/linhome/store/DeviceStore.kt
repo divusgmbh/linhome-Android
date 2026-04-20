@@ -144,6 +144,8 @@ object DeviceStore {
             !core.accountList.filter { it.params?.idkey != LinhomeAccount.PUSH_GW_ID_KEY }
                 .isEmpty() && core.accountList.filter { it.params?.idkey != LinhomeAccount.PUSH_GW_ID_KEY }
                 .first()?.params?.domain == LinhomeApplication.corePreferences.loginDomain
+        /*
+        Disable vcard fetch
         if (isLinhomeAccount) {
             Log.i("[DeviceStore] fetching vCards")
             core.config?.setString(
@@ -156,6 +158,7 @@ object DeviceStore {
             core.start()
         } else
             Log.i("[DeviceStore] No vards to fetch, as account not from the main domain ${LinhomeApplication.corePreferences.loginDomain}")
+        */
     }
 
     init {
