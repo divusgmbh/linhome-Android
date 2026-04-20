@@ -284,7 +284,12 @@ class MainActivity : GenericActivity() {
     }
 
     @NeedsPermission(Manifest.permission.POST_NOTIFICATIONS)
-    fun notifications() {}
+    fun notifications() {
+        recordAudioWithPermissionCheck()
+    }
+
+    @NeedsPermission(Manifest.permission.RECORD_AUDIO)
+    fun recordAudio() {}
 
     // Permissions denial
 
