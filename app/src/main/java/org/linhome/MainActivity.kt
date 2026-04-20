@@ -22,6 +22,7 @@ package org.linhome
 
 import android.Manifest
 import android.content.DialogInterface
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.view.MotionEvent

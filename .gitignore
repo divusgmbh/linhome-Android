@@ -7,3 +7,4 @@ app/src/main/assets/linhome.zip
 app/build
 .DS_Store
 local.properties
+app/release/output.json
