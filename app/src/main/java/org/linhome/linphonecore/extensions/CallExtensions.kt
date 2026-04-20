@@ -125,7 +125,11 @@ fun Call.extendedAccept() {
 
     val inCallParams: CallParams? = coreContext.core.createCallParams(this)
     inCallParams?.recordFile = callLog.historyEvent().mediaFileName
-    isCameraEnabled = false
+    inCallParams?.setCameraEnabled(false)
+    inCallParams?.setMicEnabled(true)
+    inCallParams?.setAudioDirection(MediaDirection.SendRecv)
+    inCallParams?.setVideoDirection(MediaDirection.SendRecv)
+    microphoneVolumeGain = 1.0f
     unMuteAudioPLayBack()
     val device = DeviceStore.findDeviceByAddress(remoteAddress)
     if (device != null) {
