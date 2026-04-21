@@ -107,7 +107,7 @@ android {
         def bundleTask = tasks.findByName("bundle${variant.buildType.name.capitalize()}")
         if (bundleTask) {
             bundleTask.doLast {
-                def bundleDir = "${buildDir}/../${variant.buildType.name}"
+                def bundleDir = "${buildDir}/${variant.buildType.name}"
                 def oldFile = new File(bundleDir, "app-${variant.buildType.name}.aab")
                 if (oldFile.exists()) {
                     def newName = "${appName}-${variant.buildType.name}-${defaultConfig.versionName}-${defaultConfig.versionCode}.aab"
