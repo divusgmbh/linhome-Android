@@ -18,4 +18,5 @@ allprojects {
         google()
         mavenCentral()
     }
+    layout.buildDirectory.set(file("${rootDir}/_output"))
 }

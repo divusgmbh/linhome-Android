@@ -8,3 +8,4 @@ app/build
 .DS_Store
 local.properties
 app/release/output.json
+_output
