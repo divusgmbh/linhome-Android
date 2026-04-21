@@ -341,6 +341,20 @@ class MainActivity : GenericActivity() {
         }
     }
 
+    @OnPermissionDenied(Manifest.permission.RECORD_AUDIO)
+    fun onRecordAudioDenied() {
+        GlobalScope.launch(context = Dispatchers.Main) {
+            DialogUtil.error("record_audio_permission_denied")
+        }
+    }
+
+    @OnNeverAskAgain(Manifest.permission.RECORD_AUDIO)
+    fun onRecordAudioDeniedNeverAsk() {
+        GlobalScope.launch(context = Dispatchers.Main) {
+            DialogUtil.error("record_audio_permission_denied_dont_ask_again")
+        }
+    }
+
     fun applyCommonTheme() {
         window.also { window ->
             window.statusBarColor = Theme.getColor("color_a")
