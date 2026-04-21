@@ -82,31 +82,39 @@ fun Call.extendedClose(){
 
 fun Call.extendedStartRecordingWithDuration() {
     val duration: Long = 5500 // recording max. duration im ms
+    val waitForFirstFrame = false
     if (isRecordRunning) {
         return
     }
     isRecordRunning = true
     stopRecordTimer()
     startRecording()
-    // Wait for first frame before starting timer
-    this.addListener(object : CallListenerStub() {
-        override fun onNextVideoFrameDecoded(call: Call) {
-            org.linphone.core.tools.Log.i("[CallExtensions] start recording on first frame received")
-            rtRunnable = Runnable {
-                org.linphone.core.tools.Log.i("[CallExtensions] stop recording due max. duration reached: ${duration}")
-                call.durationStopRecording()
-            }
-            rtRunnable?.let {
-                rtHandler.postDelayed(it, duration)
-            }
-            // Remove listener so it doesn't fire for every single frame
-            call.removeListener(this)
-        }
-    })
-    // request frame ready event
-    this.requestNotifyNextVideoFrameDecoded()
 
+    if(waitForFirstFrame) {
+        // Wait for first frame before starting timer
+        this.addListener(object : CallListenerStub() {
+            override fun onNextVideoFrameDecoded(call: Call) {
+                org.linphone.core.tools.Log.i("[CallExtensions] start recording on first frame received")
+                startRecordTimerWithDuration(duration, call)
+                // Remove listener so it doesn't fire for every single frame
+                call.removeListener(this)
+            }
+        })
+        // request frame ready event
+        this.requestNotifyNextVideoFrameDecoded()
+    }else{
+        startRecordTimerWithDuration(duration, this)
+    }
+}
 
+private fun startRecordTimerWithDuration(duration: Long, call: Call){
+    rtRunnable = Runnable {
+        org.linphone.core.tools.Log.i("[CallExtensions] stop recording due max. duration reached: ${duration}")
+        call.durationStopRecording()
+    }
+    rtRunnable?.let {
+        rtHandler.postDelayed(it, duration)
+    }
 }
 
 fun Call.stopRecordTimer() {
