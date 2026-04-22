@@ -38,6 +38,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.linhome.LinhomeApplication
 import org.linhome.LinhomeApplication.Companion.coreContext
 import org.linhome.LinhomeApplication.Companion.corePreferences
@@ -64,7 +65,6 @@ import org.linphone.core.tools.Log
 import java.util.*
 import kotlin.concurrent.fixedRateTimer
 import org.linhome.linphonecore.extensions.extendedClose
-import org.linhome.linphonecore.extensions.recorder
 import org.linhome.linphonecore.extensions.snapshotTaken
 
 private class Notifiable(val notificationId: Int) {
@@ -163,9 +163,30 @@ class NotificationsManager(private val context: Context) {
                     call.callLog.historyEvent().mediaThumbnail.also {
                         if (it.existsAndIsNotEmpty() && it.length() != fileLenght && !LinhomeApplication.someActivityRunning) {
                             fileLenght = it.length()
-                            val remoteView =
-                                fillIncomingRemoteViewsForCall(call, true)
-                            val awt = AppWidgetTarget(
+                            val bitmap: Bitmap? = withContext(Dispatchers.IO) {
+                                try {
+                                    Glide.with(context.applicationContext)
+                                        .asBitmap()
+                                        .load(it)
+                                        .submit()
+                                        .get()
+                                } catch (e: Exception) {
+                                    null
+                                }
+                            }
+                            val remoteView = fillIncomingRemoteViewsForCall(call, true)
+                            if (bitmap != null) {
+                                remoteView.setImageViewBitmap(R.id.caller_picture, bitmap)
+                                notificationBuilder.setCustomBigContentView(remoteView)
+                                notificationBuilder.setCustomContentView(remoteView)
+                                val notification = notificationBuilder.build()
+                                if (!LinhomeApplication.someActivityRunning && call.state == Call.State.IncomingEarlyMedia)
+                                    notify(getNotifiableForCall(call).notificationId, notification)
+                            } else {
+                                Log.i("[Notification Manager] failed loading snapshot: ${it.absolutePath}")
+                                remoteView.setImageViewResource(R.id.caller_picture, R.drawable.ic_linhome_icon_tinted)
+                            }
+                            /*val awt = AppWidgetTarget(
                                 context.applicationContext,
                                 R.id.caller_picture,
                                 remoteView,
@@ -177,6 +198,7 @@ class NotificationsManager(private val context: Context) {
                             val notification = notificationBuilder.build()
                             if (!LinhomeApplication.someActivityRunning && call.state == Call.State.IncomingEarlyMedia)
                                 notify(getNotifiableForCall(call).notificationId, notification)
+                             */
                         }
                     }
                 }
