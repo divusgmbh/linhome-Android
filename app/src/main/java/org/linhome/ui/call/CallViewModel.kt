@@ -105,7 +105,11 @@ class CallViewModel(val call: Call) : ViewModel() {
                     event.persist()
                 }
                 if (!event.mediaThumbnail.existsAndIsNotEmpty()) {
-                    call.takeVideoSnapshot(event.mediaThumbnail.absolutePath)
+                    if(!call.snapshotTaken) {
+                        call.takeVideoSnapshot(event.mediaThumbnail.absolutePath)
+                        Log.i("[CallViewModel] take snapshot now: ${event.mediaThumbnail.absolutePath}")
+                        call.snapshotTaken = true
+                    }
                     GlobalScope.launch(context = Dispatchers.Main) {
                         delay(500) // Snapshot availability takes a little time.
                         event.mediaThumbnail.absolutePath.getImageDimension()?.also {

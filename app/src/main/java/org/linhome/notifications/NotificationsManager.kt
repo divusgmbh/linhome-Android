@@ -64,6 +64,9 @@ import org.linphone.core.tools.Log
 import java.util.*
 import kotlin.concurrent.fixedRateTimer
 import org.linhome.linphonecore.extensions.extendedClose
+import org.linhome.linphonecore.extensions.recorder
+import org.linhome.linphonecore.extensions.snapshotTaken
+
 private class Notifiable(val notificationId: Int) {
     val messages: ArrayList<NotifiableMessage> = arrayListOf()
 
@@ -150,7 +153,11 @@ class NotificationsManager(private val context: Context) {
         @RequiresPermission("android.permission.POST_NOTIFICATIONS")
         override fun onNextVideoFrameDecoded(call: Call) {
             if (call != null) {
-                call.takeVideoSnapshot(call.callLog.historyEvent().mediaThumbnail.absolutePath)
+                if(!call.snapshotTaken) {
+                    call.takeVideoSnapshot(call.callLog.historyEvent().mediaThumbnail.absolutePath)
+                    Log.i("[Notification Manager] take snapshot now: ${call.callLog.historyEvent().mediaThumbnail.absolutePath}")
+                    call.snapshotTaken = true
+                }
                 GlobalScope.launch(context = Dispatchers.Main) {
                     delay(1000)
                     call.callLog.historyEvent().mediaThumbnail.also {
