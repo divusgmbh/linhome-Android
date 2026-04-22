@@ -34,11 +34,32 @@ import org.linphone.core.MediaDirection
 import android.os.Handler
 import android.os.Looper
 import org.linphone.core.CallListenerStub
+import org.linphone.core.Recorder
+import org.linphone.core.tools.Log
+import org.linphone.core.MediaFileFormat
 
+private var _snapshotTaken: Boolean = false
+var Call.snapshotTaken: Boolean
+    get() = _snapshotTaken
+    set(value) {
+        _snapshotTaken = value
+    }
+private var _recorder: Recorder? = null
+var Call.recorder: Recorder?
+    get() {
+        return _recorder
+    }
+    set(value) {
+        _recorder = value
+    }
 private var rtRunnable: Runnable? = null
 private val rtHandler = Handler(Looper.getMainLooper())
-
 private var isRecordRunning: Boolean = false
+private var listenerCallState: CallListenerStub? = null
+private var listenerNextVideoFrame: CallListenerStub? = null
+private var listenerSnapshot: CallListenerStub? = null
+private var rdRunnable: Runnable? = null
+private val rdHandler = Handler(Looper.getMainLooper())
 
 fun Call.extendedAcceptEarlyMedia() {
     if (state == Call.State.IncomingReceived || state == Call.State.IncomingEarlyMedia) {
@@ -53,17 +74,20 @@ fun Call.extendedAcceptEarlyMedia() {
         earlyMediaCallParams?.setMicEnabled(false)
         earlyMediaCallParams?.setVideoEnabled(true)
         earlyMediaCallParams?.setVideoDirection(MediaDirection.RecvOnly)
-
+        initRecordStartListener()
         acceptEarlyMediaWithParams(earlyMediaCallParams)
         GlobalScope.launch(context = Dispatchers.Main) {
             muteAudioPLayBack()
-            extendedStartRecordingWithDuration()
+            //extendedStartRecordingWithDuration()
         }
+
+
     }
 }
 
 fun Call.durationStopRecording(){
     stopRecordTimer()
+    stopRecorderDurationCheck()
     stopRecording()
     val filePath = params.recordFile
     // Temporary set the record file name empty to force stop recording
@@ -74,40 +98,142 @@ fun Call.durationStopRecording(){
 
 fun Call.extendedClose(){
     stopRecordTimer()
+    recorder?.close()
     stopRecording()
+    recorder = null
+    cleanUpListener()
     HistoryEventStore.stripAudio(params.recordFile!!)
     HistoryEventStore.rotateRecordings(false)
     isRecordRunning = false
+    snapshotTaken = false
 }
 
+private fun Call.initRecordStartListener(){
+    if(listenerCallState == null) {
+        listenerCallState = object : CallListenerStub() {
+            // Use CallListenerStub so you don't have to implement all 50+ methods
+            override fun onStateChanged(call: Call, state: Call.State, message: String) {
+                if (call.state == Call.State.StreamsRunning || call.state == Call.State.IncomingEarlyMedia) {
+                    GlobalScope.launch(context = Dispatchers.Main) {
+                        call.extendedStartRecordingWithDuration()
+                    }
+                    call.removeListener(this)
+                }
+            }
+        }
+        this.addListener(listenerCallState)
+    }
+}
+private fun Call.cleanUpListener(){
+    if(listenerCallState != null) {
+        this.removeListener(listenerCallState)
+        listenerCallState = null
+    }
+    if(listenerNextVideoFrame != null){
+        this.removeListener(listenerNextVideoFrame)
+        listenerNextVideoFrame = null
+    }
+    if(listenerSnapshot != null){
+        this.removeListener(listenerSnapshot)
+        listenerSnapshot = null
+    }
+}
+
+public enum class RecorderDurationMode{
+    UNLIMITED,
+    DURATION_TIMER_START_IMMEDIATELY ,
+    DURATION_TIMER_START_WITH_FIRST_FRAME,
+    DURATION_TIMER_START_WITH_SNAPSHOT_PROCESSED,
+    DURATION_RECORDER_START_IMMEDIATELY,
+    DURATION_RECORDER_START_WITH_FIRST_FRAME,
+    DURATION_RECORDER_START_WITH_SNAPSHOT_PROCESSED,
+}
 fun Call.extendedStartRecordingWithDuration() {
     val duration: Long = 5500 // recording max. duration im ms
-    val waitForFirstFrame = false
+    val recorderTimerStartMode = RecorderDurationMode.DURATION_RECORDER_START_IMMEDIATELY
+
     if (isRecordRunning) {
         return
     }
     isRecordRunning = true
     stopRecordTimer()
-    startRecording()
+    val startImmediately = recorderTimerStartMode != RecorderDurationMode.DURATION_TIMER_START_IMMEDIATELY && recorderTimerStartMode != RecorderDurationMode.DURATION_RECORDER_START_IMMEDIATELY
+    if(recorder == null){
+        val params = core.createRecorderParams()
+        params.fileFormat = MediaFileFormat.Mkv
+        params.videoCodec = "H264"
+        recorder = core.createRecorder(params)
+        val path = currentParams.recordFile //?.replace(".mkv","-2.mkv")
+        recorder?.open(path!!)
+        //recorder?.start()
 
-    if(waitForFirstFrame) {
-        // Wait for first frame before starting timer
-        this.addListener(object : CallListenerStub() {
-            override fun onNextVideoFrameDecoded(call: Call) {
-                org.linphone.core.tools.Log.i("[CallExtensions] start recording on first frame received")
-                startRecordTimerWithDuration(duration, call)
-                // Remove listener so it doesn't fire for every single frame
-                call.removeListener(this)
+        if(!startImmediately) {
+            recorder?.start()
+            startRecording()
+        }
+        Log.i("[CallExtension] start recording with duration, recorder state: ${recorder?.state}")
+    }
+    // startRecording()
+    when (recorderTimerStartMode) {
+        RecorderDurationMode.DURATION_TIMER_START_WITH_SNAPSHOT_PROCESSED, RecorderDurationMode.DURATION_RECORDER_START_WITH_SNAPSHOT_PROCESSED -> {
+            if(listenerSnapshot == null) {
+                listenerSnapshot = object : CallListenerStub() {
+                    override fun onSnapshotTaken(call: Call, filePath: String) {
+                        // Remove listener so it doesn't fire for every single frame
+                        call.removeListener(this)
+                        if(recorderTimerStartMode == RecorderDurationMode.DURATION_TIMER_START_WITH_SNAPSHOT_PROCESSED) {
+                            org.linphone.core.tools.Log.i("[CallExtensions] start recording with timer duration on snapshot processed")
+                            call.startRecordTimerWithDuration(duration, call)
+                        }
+                        if(recorderTimerStartMode == RecorderDurationMode.DURATION_RECORDER_START_WITH_SNAPSHOT_PROCESSED) {
+                            org.linphone.core.tools.Log.i("[CallExtensions] start recording with recorder duration check on snapshot processed")
+                            //call.sendVfuRequest()
+                            call.startRecorderDurationCheck(duration, call)
+                            call.recorder?.start()
+                            call.startRecording()
+                        }
+                    }
+                }
+                this.addListener(listenerSnapshot)
             }
-        })
-        // request frame ready event
-        this.requestNotifyNextVideoFrameDecoded()
-    }else{
-        startRecordTimerWithDuration(duration, this)
+        }
+        RecorderDurationMode.DURATION_TIMER_START_WITH_FIRST_FRAME, RecorderDurationMode.DURATION_RECORDER_START_WITH_FIRST_FRAME -> {
+            // Wait for first frame
+            if(listenerNextVideoFrame == null){
+                listenerNextVideoFrame = object : CallListenerStub() {
+                    override fun onNextVideoFrameDecoded(call: Call) {
+                        // Remove listener so it doesn't fire for every single frame
+                        call.removeListener(this)
+                        if(recorderTimerStartMode == RecorderDurationMode.DURATION_TIMER_START_WITH_FIRST_FRAME) {
+                            org.linphone.core.tools.Log.i("[CallExtensions] start recording with timer duration on first frame")
+                            call.startRecordTimerWithDuration(duration, call)
+                        }
+                        if(recorderTimerStartMode == RecorderDurationMode.DURATION_RECORDER_START_WITH_FIRST_FRAME) {
+                            //call.sendVfuRequest()
+                            call.startRecorderDurationCheck(duration, call)
+                            call.recorder?.start()
+                            call.startRecording()
+                            org.linphone.core.tools.Log.i("[CallExtensions] start recording with recorder duration check on first frame, recorder state: ${recorder?.state}")
+                        }
+                    }
+                }
+                this.addListener(listenerNextVideoFrame)
+            }
+            this.requestNotifyNextVideoFrameDecoded()
+        }
+        RecorderDurationMode.DURATION_TIMER_START_IMMEDIATELY -> {
+            startRecordTimerWithDuration(duration, this)
+        }
+        RecorderDurationMode.DURATION_RECORDER_START_IMMEDIATELY ->{
+            startRecorderDurationCheck(duration, this)
+        }
+        else -> {
+
+        }
     }
 }
 
-private fun startRecordTimerWithDuration(duration: Long, call: Call){
+private fun Call.startRecordTimerWithDuration(duration: Long, call: Call){
     rtRunnable = Runnable {
         org.linphone.core.tools.Log.i("[CallExtensions] stop recording due max. duration reached: ${duration}")
         call.durationStopRecording()
@@ -121,6 +247,29 @@ fun Call.stopRecordTimer() {
     rtRunnable?.let {
         rtHandler.removeCallbacks(it)
         rtRunnable = null
+    }
+}
+
+private fun Call.startRecorderDurationCheck(duration: Long, call: Call){
+    rdRunnable = Runnable {
+        if((call.recorder?.duration ?: 0) >= duration) {
+            org.linphone.core.tools.Log.i("[CallExtensions] stop recording due recorder reached max. duration: ${call.recorder?.duration}ms of max.  ${duration}ms")
+            call.durationStopRecording()
+        }else{
+            rdRunnable?.let {
+                rdHandler.postDelayed(it, 250)
+            }
+        }
+    }
+    rdRunnable?.let {
+        rdHandler.postDelayed(it, 250)
+    }
+}
+
+fun Call.stopRecorderDurationCheck() {
+    rdRunnable?.let {
+        rdHandler.removeCallbacks(it)
+        rdRunnable = null
     }
 }
 
@@ -147,10 +296,13 @@ fun Call.extendedAccept() {
         coreContext.core.useRfc2833ForDtmf = corePreferences.defaultActionsMethodType == "method_dtmf_rfc_4733"
         coreContext.core.useInfoForDtmf = corePreferences.defaultActionsMethodType == "method_dtmf_sip_info"
     }
+
+    initRecordStartListener()
+
     acceptWithParams(inCallParams)
-    if (!isRecordRunning) {
+    /*if (!isRecordRunning) {
         extendedStartRecordingWithDuration()
-    }
+    }*/
 }
 
 
