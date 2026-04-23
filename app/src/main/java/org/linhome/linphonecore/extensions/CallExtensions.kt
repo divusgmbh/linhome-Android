@@ -140,6 +140,7 @@ private fun Call.cleanUpListener(){
 }
 
 public enum class RecorderDurationMode{
+    NO_VIDEO_RECORDING,
     UNLIMITED,
     DURATION_TIMER_START_IMMEDIATELY ,
     DURATION_TIMER_START_WITH_FIRST_FRAME,
@@ -149,8 +150,9 @@ public enum class RecorderDurationMode{
     DURATION_RECORDER_START_WITH_SNAPSHOT_PROCESSED,
 }
 fun Call.extendedStartRecordingWithDuration() {
+    val recorderTimerStartMode = RecorderDurationMode.NO_VIDEO_RECORDING
+    if(recorderTimerStartMode == RecorderDurationMode.NO_VIDEO_RECORDING) return
     val duration: Long = 5500 // recording max. duration im ms
-    val recorderTimerStartMode = RecorderDurationMode.DURATION_RECORDER_START_IMMEDIATELY
 
     if (isRecordRunning) {
         return
@@ -226,6 +228,9 @@ fun Call.extendedStartRecordingWithDuration() {
         }
         RecorderDurationMode.DURATION_RECORDER_START_IMMEDIATELY ->{
             startRecorderDurationCheck(duration, this)
+        }
+        RecorderDurationMode.NO_VIDEO_RECORDING -> {
+
         }
         else -> {
 

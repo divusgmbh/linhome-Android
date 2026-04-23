@@ -21,7 +21,6 @@
 package org.linhome.ui.player
 
 import android.graphics.SurfaceTexture
-import android.net.Uri
 import android.os.Bundle
 import android.os.SystemClock
 import android.view.TextureView
@@ -31,9 +30,13 @@ import androidx.core.view.updateLayoutParams
 import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.resource.bitmap.FitCenter
+import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 import org.linhome.GenericActivity
 import org.linhome.LinhomeApplication
 import org.linhome.R
+import org.linhome.customisation.Customisation
 import org.linhome.databinding.ActivityPlayerBinding
 import org.linhome.linphonecore.extensions.historyEvent
 import org.linhome.store.HistoryEventStore
@@ -42,7 +45,6 @@ import org.linhome.utils.getImageDimension
 import org.linphone.core.Player
 import org.linphone.core.tools.Log
 import java.io.File
-
 
 class PlayerActivity : GenericActivity() {
 
@@ -86,19 +88,39 @@ class PlayerActivity : GenericActivity() {
                         setupPlayerControl(binding, playerViewModel)
 
                         if (event.hasVideo) {
+                            binding.audiomedia.setImageDrawable(null)
+                            binding.controls.visibility = View.GONE
                             setTextureView(binding.video, player, seekTo, playing)
-                        }
-
-                        HistoryEventStore.markAsRead(event.id)
-                        binding.chunkPlayerControls?.play?.setOnClickListener {
-                            togglePlay()
-                        }
-                        event.mediaThumbnail.absolutePath.getImageDimension()?.also { size ->
-                            binding.video.updateLayoutParams<ConstraintLayout.LayoutParams> {
-                                dimensionRatio = "H,${size.width}:${size.height}"
-                                matchConstraintPercentWidth = CallGenericActivity.computePercentageWidth(size,200) //  240Dp left for buttons and header
+                            binding.controls.visibility = View.VISIBLE
+                            binding.chunkPlayerControls?.play?.setOnClickListener {
+                                togglePlay()
                             }
-                         }
+                            event.mediaThumbnail.absolutePath.getImageDimension()?.also { size ->
+                                binding.video.updateLayoutParams<ConstraintLayout.LayoutParams> {
+                                    dimensionRatio = "H,${size.width}:${size.height}"
+                                    matchConstraintPercentWidth = CallGenericActivity.computePercentageWidth(size,200) //  240Dp left for buttons and header
+                                }
+                            }
+                        } else {
+                            binding.controls.visibility = View.GONE
+                            if(event.mediaThumbnail.exists()) {
+                                val thumbnail = event.mediaThumbnail.absolutePath
+                                // Create rounded corners, same as in video view
+                                val dp = Customisation.themeConfig.getFloat("arbitrary-values", "video_view_corner_radius", 20.0f)
+                                val radius = (dp * resources.displayMetrics.density).toInt()
+                                Glide.with(this)
+                                    .load(File(thumbnail))
+                                    .transform(FitCenter())
+                                    .transform( RoundedCorners(radius))
+                                    .placeholder(R.drawable.ic_linhome_icon_tinted)
+                                    .into(binding.audiomedia)
+                                binding.audiomedia.visibility = View.VISIBLE
+                            } else {
+                                binding.audiomedia.setImageDrawable(null)
+                                binding.controls.visibility = View.GONE
+                            }
+                        }
+                        HistoryEventStore.markAsRead(event.id)
                     }
             }
 

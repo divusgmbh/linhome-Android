@@ -29,17 +29,18 @@
 
         <ImageView
             android:id="@+id/audiomedia"
-            src='@{"icons/audio_media"}'
-            tint='@{"color_c"}'
-            android:src="@drawable/ic_linhome_icon"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="10dp"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintBottom_toTopOf="@id/controls"
-            android:visibility='@{model.historyEvent.hasVideo ? View.INVISIBLE : View.VISIBLE}'
-            app:layout_constraintDimensionRatio="H,3:4" />
+            app:layout_constraintDimensionRatio="H,3:4"/>
+            <!-- android:visibility='@{model.historyEvent.hasVideo ? View.INVISIBLE : View.VISIBLE}'
+                 tint='@{"color_c"}'
+                 src='@{"icons/audio_media"}'
+                 android:src="@drawable/ic_linhome_icon"-->
 
 
         <LinearLayout

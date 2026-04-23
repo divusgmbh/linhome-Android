@@ -53,9 +53,13 @@ data class HistoryEvent(
         }
 
     fun hasMedia(): Boolean {
-        return media.let {
+        val hasVideo = media.let {
             it.existsAndIsNotEmpty()
         }
+        val hasThumbnail = mediaThumbnail.let {
+            it.existsAndIsNotEmpty()
+        }
+        return hasVideo || hasThumbnail
     }
 
     fun hasMediaThumbnail(): Boolean {
