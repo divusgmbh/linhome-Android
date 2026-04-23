@@ -112,12 +112,14 @@ class DevicesFragment : GenericFragment() {
         })
 
         binding.swiperefresh?.setOnRefreshListener {
+            /* WORKAROUNDSU REMOVED REFRESH DEVICES FROM SERVER
             if (LinhomeApplication.coreContext.core.isNetworkReachable != true) {
                 binding.swiperefresh?.isRefreshing = false
                 DialogUtil.error("no_network")
             } else if (LinhomeApplication.coreContext.core.callsNb == 0) {
                 DeviceStore.serverFriendList?.synchronizeFriendsFromServer()
             }
+             */
         }
 
         return binding.root
