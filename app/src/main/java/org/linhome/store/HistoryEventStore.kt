@@ -239,6 +239,7 @@ object HistoryEventStore {
         }
         if(callIdsToRemove.count() > 0){
             syncModel.postValue(true)
+            sync()
         }
     }
 
