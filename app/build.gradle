@@ -34,33 +34,44 @@ abstract class GitVersionTask extends DefaultTask {
 
     @TaskAction
     void run() {
-        def gitVersion = "5.0.0"
-        def gitVersionStream = new ByteArrayOutputStream()
-        def gitCommitsCount = new ByteArrayOutputStream()
-        def gitCommitHash = new ByteArrayOutputStream()
+        def gitVersion = ""
+        // def gitVersionStream = new ByteArrayOutputStream()
+        // def gitCommitsCount = new ByteArrayOutputStream()
+        // def gitCommitHash = new ByteArrayOutputStream()
+        def gitBranch = new ByteArrayOutputStream()
+        def gitCommit = new ByteArrayOutputStream()
+        def gitBuildTime = new ByteArrayOutputStream()
 
         try {
             getExecOperations().exec {
-                commandLine "git", "describe", "--abbrev=0"
-                standardOutput = gitVersionStream
+                // commandLine "git", "describe", "--abbrev=0"
+                // standardOutput = gitVersionStream
+                commandLine "git", "rev-parse", "--abbrev-ref", "HEAD"
+                standardOutput = gitBranch
             }
             getExecOperations().exec {
-                commandLine "git", "rev-list",
-                        gitVersionStream.toString().trim() + "..HEAD", "--count"
-                standardOutput = gitCommitsCount
+                // commandLine "git", "rev-list", gitVersionStream.toString().trim() + "..HEAD", "--count"
+                // standardOutput = gitCommitsCount
+                commandLine "git", "rev-parse", "--short=8", "HEAD"
+                standardOutput = gitCommit
             }
             getExecOperations().exec {
-                commandLine "git", "rev-parse", "--short", "HEAD"
-                standardOutput = gitCommitHash
+                // commandLine "git", "rev-parse", "--short", "HEAD"
+                // standardOutput = gitCommit
+                commandLine "date", "+\"%Y%m%d%H%M%S\""
+                standardOutput = gitBuildTime
             }
 
-            if (gitCommitsCount.toString().toInteger() == 0) {
-                gitVersion = gitVersionStream.toString().trim()
-            } else {
-                gitVersion = gitVersionStream.toString().trim() + "." +
-                        gitCommitsCount.toString().trim() + "+" +
-                        gitCommitHash.toString().trim()
-            }
+            // if (gitCommitsCount.toString().toInteger() == 0) {
+            //     gitVersion = gitVersionStream.toString().trim()
+            // } else {
+            //     gitVersion = gitVersionStream.toString().trim() + "." +
+            //             gitCommitsCount.toString().trim() + "+" +
+            //             gitCommitHash.toString().trim()
+            // }
+            gitVersion = gitBranch.toString().trim() + "." +
+                    gitCommit.toString().trim() + "." +
+                    gitBuildTime.toString().trim()
             println("Git version: " + gitVersion)
         } catch (ignored) {
             println("Git not found")
@@ -89,7 +100,7 @@ android {
         applicationId "eu.divus.videophone_mobile"
         minSdkVersion 23
         targetSdkVersion 36
-        versionCode 75
+        versionCode 76
         versionName "1.4.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
