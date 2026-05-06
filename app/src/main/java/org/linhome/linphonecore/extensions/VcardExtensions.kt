@@ -45,16 +45,19 @@ fun Vcard.isValid():  Boolean {
         return false
     }
 
-    val validDtmf = if (card.getExtendedPropertiesValuesByName(Device.vcard_action_method_type_header).size == 1) card.getExtendedPropertiesValuesByName(Device.vcard_action_method_type_header)
-        .component1()?.let { remoteDtmfMethod ->
-            Device.vCardActionMethodsToDeviceMethods.get(remoteDtmfMethod)?.let { localDtmfMethod ->
+    val dtmfHeaders = card.getExtendedPropertiesValuesByName(Device.vcard_action_method_type_header)
+    val hasActions = card.getExtendedPropertiesValuesByName(Device.vcard_actions_list_header).isNotEmpty()
+    val validDtmf = when {
+        dtmfHeaders.size == 0 && !hasActions -> true
+        dtmfHeaders.size == 1 -> dtmfHeaders.component1()?.let { remoteDtmfMethod ->
+            Device.vCardActionMethodsToDeviceMethods[remoteDtmfMethod]?.let { localDtmfMethod ->
                 ActionsMethodTypes.methodTypeIsSupported(localDtmfMethod)
-            }?:false
-        }?:false else false
+            } ?: false
+        } ?: false
+        else -> false
+    }
     if (!validDtmf) {
-        Log.e("[Device] vCard validation : invalid dtmf sending method ${
-            card.getExtendedPropertiesValuesByName(Device.vcard_action_method_type_header)
-        }")
+        Log.e("[Device] vCard validation : invalid dtmf sending method $dtmfHeaders")
         return false
     }
 

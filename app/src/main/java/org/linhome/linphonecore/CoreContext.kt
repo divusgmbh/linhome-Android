@@ -68,6 +68,7 @@ import java.io.File
 import java.util.Timer
 import java.util.TimerTask
 import kotlin.math.abs
+import org.linhome.store.DeviceStore
 
 class CoreContext(
     val context: Context,
@@ -230,6 +231,8 @@ class CoreContext(
             core.enterBackground()
         }
         core.config.setBool("net", "use_legacy_push_notification_params", true)
+        core.config.sync()
+        DeviceStore.preMergeDevicesDatav54()
         core.start()
 
         configureCore()

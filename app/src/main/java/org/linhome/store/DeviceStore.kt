@@ -20,6 +20,8 @@
 
 package org.linhome.store
 
+import android.content.Context
+import android.database.sqlite.SQLiteDatabase
 import androidx.lifecycle.MutableLiveData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -42,6 +44,7 @@ import org.linphone.core.FriendList
 import org.linphone.core.FriendListListenerStub
 import org.linphone.core.GlobalState
 import org.linphone.mediastream.Log
+import java.io.File
 
 object DeviceStore {
 
@@ -138,14 +141,15 @@ object DeviceStore {
     }
 
     fun fetchVCards() {
+        Log.i("[DeviceStore] fetchVCards is disabled")
+        /*
         Log.i("[DeviceStore] fetchVCards")
         val core = LinhomeApplication.coreContext.core
         val isLinhomeAccount =
             !core.accountList.filter { it.params?.idkey != LinhomeAccount.PUSH_GW_ID_KEY }
                 .isEmpty() && core.accountList.filter { it.params?.idkey != LinhomeAccount.PUSH_GW_ID_KEY }
                 .first()?.params?.domain == LinhomeApplication.corePreferences.loginDomain
-        /*
-        Disable vcard fetch
+
         if (isLinhomeAccount) {
             Log.i("[DeviceStore] fetching vCards")
             core.config?.setString(
@@ -176,7 +180,8 @@ object DeviceStore {
                 Log.e("[DeviceStore] unable to create device from card (card is null or invdalid) : ${friend.vcard?.asVcard4String()} ")
             }
         }
-        serverFriendList?.friends?.forEach { friend ->
+        // Disabled read remote provisionned friends
+        /*serverFriendList?.friends?.forEach { friend ->
             Log.i("[DeviceStore] Found remote friend  : ${friend.name} ")
             val card = friend.vcard
             if (card != null && card.isValid()) {
@@ -187,7 +192,7 @@ object DeviceStore {
             } else {
                 Log.e("[DeviceStore] received invalid or malformed vCard from remote : ${friend.vcard?.asVcard4String()} ")
             }
-        }
+        }*/
         devices.sortWith(compareBy({ it.name }, { it.address }))
         mutableDevices?.value = devices
     }
@@ -279,6 +284,42 @@ object DeviceStore {
             Log.i("[DeviceStore] removing server friend list (remotely provisionning devices)")
             LinhomeApplication.coreContext.core.removeFriendList(serverFriendList)
             readDevicesFromFriends()
+        }
+    }
+
+    fun preMergeDevicesDatav54(){
+        val ctx = LinhomeApplication.coreContext.context
+        val prefs = ctx.getSharedPreferences("linphone_migration_prefs", Context.MODE_PRIVATE)
+        val isPremergeDone = prefs.getBoolean("premerge_v54_done", false)
+
+        if (!isPremergeDone) {
+            Log.i("[DeviceStore] pre-merging devices for v5.4+ now ...")
+            val dbPath =
+                File(LinhomeApplication.instance.filesDir.absolutePath, "devices.db").absolutePath
+            val db = SQLiteDatabase.openDatabase(dbPath, null, SQLiteDatabase.OPEN_READWRITE)
+            try {
+                db.beginTransaction()
+
+                // Version 5.4 changed 'revision' from INT to TEXT.
+                // If the old value is 0 (Integer), the new UNIQUE index on the
+                // string version of that column often fails.
+                db.execSQL("UPDATE friends_lists SET revision = '' WHERE revision IS NULL OR revision = '0' OR revision = 0")
+
+                // Remove remote vcard url from friends_lists to avoid sqlite crash and so no device is imported
+                db.execSQL("DELETE from friends_lists WHERE display_name LIKE '%vcard%'")
+
+                db.setTransactionSuccessful()
+                prefs.edit().putBoolean("premerge_v54_done", true).apply()
+                Log.i("[DeviceStore] pre-merging devices for v5.4+ completed")
+            } catch (e: Exception) {
+                // If the table 'friends' was already renamed or doesn't exist, ignore.
+                Log.i("[DeviceStore] pre-merging devices not possible, remote vcard url not present")
+            } finally {
+                db.endTransaction()
+                db.close()
+            }
+        }else{
+            Log.i("[DeviceStore] pre-merging devices for v5.4+ already done")
         }
     }
 

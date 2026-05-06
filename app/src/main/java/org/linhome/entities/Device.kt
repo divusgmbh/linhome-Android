@@ -60,8 +60,11 @@ data class Device(
                 friend.createVcard(name)
                 friend.vcard?.addExtendedProperty(vcard_device_type_header, type!!)
                 friend.vcard?.addSipAddress(address)
-                friend.vcard?.addExtendedProperty(vcard_action_method_type_header,
-                    deviceActionMethodsTovCardActionMethods().get(actionsMethodType!!)!!)
+                actionsMethodType?.let { amt ->
+                    deviceActionMethodsTovCardActionMethods()[amt]?.let { vCardMethod ->
+                        friend.vcard?.addExtendedProperty(vcard_action_method_type_header, vCardMethod)
+                    }
+                }
                 actions?.forEach { it ->
                     friend.vcard?.addExtendedProperty(vcard_actions_list_header,it.type!! + "~" + it.code!!)
                 }
@@ -86,7 +89,7 @@ data class Device(
         card.getExtendedPropertiesValuesByName(vcard_device_type_header).component1(),
         card.fullName!!,
         card.sipAddresses.component1()?.asStringUriOnly()!!,
-        vCardActionMethodsToDeviceMethods.get(card.getExtendedPropertiesValuesByName(vcard_action_method_type_header).component1()),
+        vCardActionMethodsToDeviceMethods[card.getExtendedPropertiesValuesByName(vcard_action_method_type_header)?.firstOrNull()],
         ArrayList(),
         isRemotelyProvisionned)
     {
