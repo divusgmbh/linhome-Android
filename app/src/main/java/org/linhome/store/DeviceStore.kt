@@ -30,7 +30,6 @@ import org.linhome.LinhomeApplication
 import org.linhome.LinhomeApplication.Companion.corePreferences
 import org.linhome.entities.Action
 import org.linhome.entities.Device
-import org.linhome.entities.LinhomeAccount
 import org.linhome.linphonecore.extensions.getString
 import org.linhome.linphonecore.extensions.isValid
 import org.linhome.store.StorageManager.devicesXml
@@ -294,29 +293,39 @@ object DeviceStore {
 
         if (!isPremergeDone) {
             Log.i("[DeviceStore] pre-merging devices for v5.4+ now ...")
-            val dbPath =
-                File(LinhomeApplication.instance.filesDir.absolutePath, "devices.db").absolutePath
-            val db = SQLiteDatabase.openDatabase(dbPath, null, SQLiteDatabase.OPEN_READWRITE)
-            try {
-                db.beginTransaction()
+            val dbFile =
+                File(LinhomeApplication.instance.filesDir.absolutePath, "devices.db")
+            if(dbFile.exists()) {
+                try {
+                    val db =
+                        SQLiteDatabase.openDatabase(dbFile.absolutePath, null, SQLiteDatabase.OPEN_READWRITE)
+                    try {
+                        db.beginTransaction()
 
-                // Version 5.4 changed 'revision' from INT to TEXT.
-                // If the old value is 0 (Integer), the new UNIQUE index on the
-                // string version of that column often fails.
-                db.execSQL("UPDATE friends_lists SET revision = '' WHERE revision IS NULL OR revision = '0' OR revision = 0")
+                        // Version 5.4 changed 'revision' from INT to TEXT.
+                        // If the old value is 0 (Integer), the new UNIQUE index on the
+                        // string version of that column often fails.
+                        db.execSQL("UPDATE friends_lists SET revision = '' WHERE revision IS NULL OR revision = '0' OR revision = 0")
 
-                // Remove remote vcard url from friends_lists to avoid sqlite crash and so no device is imported
-                db.execSQL("DELETE from friends_lists WHERE display_name LIKE '%vcard%'")
+                        // Remove remote vcard url from friends_lists to avoid sqlite crash and so no device is imported
+                        db.execSQL("DELETE from friends_lists WHERE display_name LIKE '%vcard%'")
 
-                db.setTransactionSuccessful()
+                        db.setTransactionSuccessful()
+                        prefs.edit().putBoolean("premerge_v54_done", true).apply()
+                        Log.i("[DeviceStore] pre-merging devices for v5.4+ completed")
+                    } catch (e: Exception) {
+                        // If the table 'friends' was already renamed or doesn't exist, ignore.
+                        Log.i("[DeviceStore] pre-merging devices not possible, remote vcard url not present")
+                    } finally {
+                        db.endTransaction()
+                        db.close()
+                    }
+                } catch (e: Exception) {
+                    Log.w("[DeviceStore] failed open devices.db at: "+dbFile.absolutePath+", "+e.message)
+                }
+            }else{
+                Log.i("[DeviceStore] pre-merging devices for v5.4+ not necessary devices.db is not existing at: "+dbFile.absolutePath)
                 prefs.edit().putBoolean("premerge_v54_done", true).apply()
-                Log.i("[DeviceStore] pre-merging devices for v5.4+ completed")
-            } catch (e: Exception) {
-                // If the table 'friends' was already renamed or doesn't exist, ignore.
-                Log.i("[DeviceStore] pre-merging devices not possible, remote vcard url not present")
-            } finally {
-                db.endTransaction()
-                db.close()
             }
         }else{
             Log.i("[DeviceStore] pre-merging devices for v5.4+ already done")
