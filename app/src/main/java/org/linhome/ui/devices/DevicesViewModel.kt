@@ -22,11 +22,8 @@ package org.linhome.ui.devices
 
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import org.linhome.LinhomeApplication
 import org.linhome.entities.Device
 import org.linhome.store.DeviceStore
-import org.linphone.core.*
-import org.linphone.mediastream.Log
 
 class DevicesViewModel : ViewModel() {
     var devices = MutableLiveData<ArrayList<Device>>().apply {
