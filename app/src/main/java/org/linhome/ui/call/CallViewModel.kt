@@ -100,10 +100,10 @@ class CallViewModel(val call: Call) : ViewModel() {
                 videoContent.value = true
             }
             call?.callLog?.historyEvent()?.also { event ->
-                if (!event.hasVideo) {
+                /*if (!event.hasVideo) {
                     event.hasVideo = true
                     event.persist()
-                }
+                }*/
                 if (!event.mediaThumbnail.existsAndIsNotEmpty()) {
                     if(!call.snapshotTaken) {
                         call.takeVideoSnapshot(event.mediaThumbnail.absolutePath)
