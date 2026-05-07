@@ -25,9 +25,12 @@ import android.graphics.Canvas
 import android.os.Parcelable
 import com.caverock.androidsvg.SVG
 import kotlinx.android.parcel.Parcelize
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.linhome.LinhomeApplication
+import org.linhome.LinhomeApplication.Companion.corePreferences
 import org.linhome.customisation.DeviceTypes
 import org.linhome.store.StorageManager
 import org.linhome.utils.DialogUtil
@@ -116,6 +119,18 @@ data class Device(
             return File(StorageManager.devicesThumnailPath, "${id}.jpg")
         }
 
+    fun setThumbnailFromSnapshot(snapshot: File?) {
+        if (corePreferences.showLatestSnapshot) {
+            if (snapshot != null) {
+                GlobalScope.launch(context = Dispatchers.Main) {
+                    delay(500) // wait so that the snapshot can finish to be stored
+                    if (snapshot.existsAndIsNotEmpty()) {
+                        snapshot.copyTo(thumbNail, true)
+                    }
+                }
+            }
+        }
+    }
 
 
     fun supportsVideo(): Boolean {

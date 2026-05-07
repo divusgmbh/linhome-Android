@@ -81,7 +81,6 @@ class CallViewModel(val call: Call) : ViewModel() {
                     historyEvent = call.callLog.historyEvent()
                 }
                 fireActionsOnCallStateChanged(state)
-                attemptSetDeviceThumbnail(state)
                 call?.remoteParams?.isVideoEnabled?.also {
                     if (!videoContent.value!!)
                         call.requestNotifyNextVideoFrameDecoded()
@@ -106,9 +105,12 @@ class CallViewModel(val call: Call) : ViewModel() {
                 }*/
                 if (!event.mediaThumbnail.existsAndIsNotEmpty()) {
                     if(!call.snapshotTaken) {
-                        call.takeVideoSnapshot(event.mediaThumbnail.absolutePath)
+                        val file = event.mediaThumbnail
+                        call.takeVideoSnapshot(file.absolutePath)
                         Log.i("[CallViewModel] take snapshot now: ${event.mediaThumbnail.absolutePath}")
                         call.snapshotTaken = true
+                        val device = DeviceStore.findDeviceByAddress(call.remoteAddress)
+                        device?.setThumbnailFromSnapshot(file)
                     }
                     GlobalScope.launch(context = Dispatchers.Main) {
                         delay(500) // Snapshot availability takes a little time.
@@ -152,27 +154,6 @@ class CallViewModel(val call: Call) : ViewModel() {
                 }
         }
     }
-
-
-    private fun attemptSetDeviceThumbnail(cstate: Call.State) {
-        if (cstate == Call.State.End) { // Copy call media file to device file if there is none or user needs last
-            device.value?.also { d ->
-                d.thumbNail.also { deviceThumb ->
-                    if (corePreferences.showLatestSnapshot || !deviceThumb.existsAndIsNotEmpty()) {
-                        call.callLog?.historyEvent()?.also { event ->
-                            GlobalScope.launch(context = Dispatchers.Main) {
-                                delay(500) // Snapshot availability takes a little time.
-                                if (event.mediaThumbnail.existsAndIsNotEmpty()) {
-                                    event.mediaThumbnail.copyTo(deviceThumb, true)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
 
     fun decline() {
         call.decline(Reason.Declined)

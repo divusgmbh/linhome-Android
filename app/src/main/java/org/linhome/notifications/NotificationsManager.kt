@@ -154,9 +154,12 @@ class NotificationsManager(private val context: Context) {
         override fun onNextVideoFrameDecoded(call: Call) {
             if (call != null) {
                 if(!call.snapshotTaken) {
-                    call.takeVideoSnapshot(call.callLog.historyEvent().mediaThumbnail.absolutePath)
+                    val file = call.callLog.historyEvent().mediaThumbnail
+                    call.takeVideoSnapshot(file.absolutePath)
                     Log.i("[Notification Manager] take snapshot now: ${call.callLog.historyEvent().mediaThumbnail.absolutePath}")
                     call.snapshotTaken = true
+                    val device = DeviceStore.findDeviceByAddress(call.remoteAddress)
+                    device?.setThumbnailFromSnapshot(file)
                 }
                 GlobalScope.launch(context = Dispatchers.Main) {
                     delay(1000)
