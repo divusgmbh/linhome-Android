@@ -31,11 +31,13 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import org.linhome.GenericFragment
+import org.linhome.LinhomeApplication
 import org.linhome.LinhomeApplication.Companion.coreContext
 import org.linhome.customisation.Texts
 import org.linhome.customisation.Theme
 import org.linhome.databinding.FragmentHistoryBinding
 import org.linhome.utils.DialogUtil
+import org.linphone.core.Call
 
 
 class HistoryFragment : GenericFragment() {
@@ -140,8 +142,15 @@ class HistoryFragment : GenericFragment() {
 
 
     override fun onPause() {
-        historyViewModel.markEventsAsRead()
-        mainactivity.tabbarViewModel.updateUnreadCount()
+        // Do not mark unread all during incoming call view is shown to avoid
+        // unwanted unread marking if the app is in foregrund and the history tab is visible
+        val incomingCallActive = LinhomeApplication.coreContext.core.calls.any {
+            it.state in listOf(Call.State.IncomingReceived, Call.State.IncomingEarlyMedia)
+        }
+        if (!incomingCallActive) {
+            historyViewModel.markEventsAsRead()
+            mainactivity.tabbarViewModel.updateUnreadCount()
+        }
         super.onPause()
     }
 }
