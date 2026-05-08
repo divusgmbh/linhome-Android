@@ -26,6 +26,8 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.widget.RemoteViews
 import androidx.annotation.RequiresPermission
 import androidx.core.app.NotificationCompat
@@ -49,6 +51,7 @@ import org.linhome.customisation.DeviceTypes
 import org.linhome.customisation.Texts
 import org.linhome.customisation.Theme
 import org.linhome.linphonecore.CoreService
+import org.linhome.linphonecore.extensions.durationStopRecording
 import org.linhome.linphonecore.extensions.extendedAcceptEarlyMedia
 import org.linhome.linphonecore.extensions.historyEvent
 import org.linhome.linphonecore.extensions.missedCount
@@ -66,6 +69,7 @@ import java.util.*
 import kotlin.concurrent.fixedRateTimer
 import org.linhome.linphonecore.extensions.extendedClose
 import org.linhome.linphonecore.extensions.snapshotTaken
+import org.linphone.core.Reason
 
 private class Notifiable(val notificationId: Int) {
     val messages: ArrayList<NotifiableMessage> = arrayListOf()
@@ -106,6 +110,10 @@ class NotificationsManager(private val context: Context) {
 
     private var isEarlyMediaRecordRunning: Boolean = false
 
+    private var rtRunnable: Runnable? = null
+    private val rtHandler = Handler(Looper.getMainLooper())
+    private var rtDuration : Long = 25000 // ringing max. duration im ms
+
     private val coreListener: CoreListenerStub = object : CoreListenerStub() {
         @RequiresPermission("android.permission.POST_NOTIFICATIONS")
         override fun onCallStateChanged(
@@ -116,11 +124,20 @@ class NotificationsManager(private val context: Context) {
         ) {
             if (call == null) return
             Log.i("[Notifications Manager] Call state changed [$state]")
+
+            /*
+            val errorInfo = call.errorInfo
+            val reason = errorInfo.reason
+            val sipCode = errorInfo.protocolCode
+             */
+
             when (state) {
-                Call.State.IncomingEarlyMedia, Call.State.IncomingReceived -> displayIncomingCallNotification(
-                    call
-                )
+                Call.State.IncomingEarlyMedia, Call.State.IncomingReceived -> {
+                    displayIncomingCallNotification(call)
+                    startRingingTimer(rtDuration)
+                }
                 Call.State.End, Call.State.Error -> {
+                    stopRingingTimer()
                     call.extendedClose()
                     dismissCallNotification(call)
                     isEarlyMediaRecordRunning = false
@@ -773,5 +790,29 @@ class NotificationsManager(private val context: Context) {
             Texts.get("call_button_decline"),
             hangupPendingIntent
         ).build()
+    }
+
+    private fun startRingingTimer(duration: Long){
+        if(rtRunnable == null) {
+            rtRunnable = Runnable {
+                Log.i("[Notifications Manager] ringing timeout reached : ${duration}, closing now")
+                val call = coreContext.core.currentCall ?: coreContext.core.calls[0]
+                if( call != null){
+                    call.callLog.historyEvent()?.forcedMissed = true
+                    call.callLog.historyEvent()?.persist()
+                    call.decline(Reason.Busy)
+                }
+            }
+            rtRunnable?.let {
+                rtHandler.postDelayed(it, duration)
+            }
+        }
+    }
+
+    fun stopRingingTimer() {
+        rtRunnable?.let {
+            rtHandler.removeCallbacks(it)
+            rtRunnable = null
+        }
     }
 }
