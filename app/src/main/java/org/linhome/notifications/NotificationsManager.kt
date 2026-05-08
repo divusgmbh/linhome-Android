@@ -144,7 +144,7 @@ class NotificationsManager(private val context: Context) {
                 }
                 Call.State.Released -> {
                     call.extendedClose()
-                    if (call.callLog?.status == Call.Status.Missed) {
+                    if (call.callLog?.status == Call.Status.Missed || call.callLog.historyEvent().forcedMissed) {
                         displayMissedCallNotification(call)
                     } else if (call.callLog?.status == Call.Status.DeclinedElsewhere) {
                         displayElsewhere(call,true)
