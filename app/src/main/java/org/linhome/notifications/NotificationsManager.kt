@@ -113,6 +113,9 @@ class NotificationsManager(private val context: Context) {
     private var rtRunnable: Runnable? = null
     private val rtHandler = Handler(Looper.getMainLooper())
     private var rtDuration : Long = 25000 // ringing max. duration im ms
+    private val notifMissedIdStart: Int = 1_000
+    private val notifMissedMaxCount: Int = 20
+    private var lastMissedCallNotificationId: Int = notifMissedIdStart
 
     private val coreListener: CoreListenerStub = object : CoreListenerStub() {
         @RequiresPermission("android.permission.POST_NOTIFICATIONS")
@@ -636,7 +639,11 @@ class NotificationsManager(private val context: Context) {
     fun displayMissedCallNotification(call: Call) {
         val missedCallCount: Int = call.core.missedCallsCount
         var body: String = ""
-        var notifId = lastNotificationId++
+        var notifId = lastMissedCallNotificationId++
+        if(notifId >= (notifMissedIdStart+notifMissedMaxCount)){
+            lastMissedCallNotificationId = notifMissedIdStart
+            notifId = notifMissedIdStart
+        }
         var title = Texts.get("notif_missed_call_singular_title")
         if(LinhomeApplication.corePreferences.notifyEachMissedCall){
             val name = DeviceStore.findDeviceByAddress(call.remoteAddress)?.name
@@ -687,7 +694,11 @@ class NotificationsManager(private val context: Context) {
     fun displayElsewhere(call: Call, declined: Boolean) {
         val missedCallCount: Int = call.core.missedCallsCount
         var body: String = ""
-        var notifId = lastNotificationId++
+        var notifId = lastMissedCallNotificationId++
+        if(notifId >= (notifMissedIdStart+notifMissedMaxCount)){
+            lastMissedCallNotificationId = notifMissedIdStart
+            notifId = notifMissedIdStart
+        }
         var title = Texts.get(if (declined) "notif_declined_elsewhere_call_title" else "notif_accepted_elsewhere_call_title")
         if(LinhomeApplication.corePreferences.notifyEachMissedCall){
             val name = DeviceStore.findDeviceByAddress(call.remoteAddress)?.name
@@ -846,5 +857,12 @@ class NotificationsManager(private val context: Context) {
             rtHandler.removeCallbacks(it)
             rtRunnable = null
         }
+    }
+
+    fun cleanMissedCalls(){
+        for(count in notifMissedIdStart..<(notifMissedIdStart+notifMissedMaxCount)){
+            notificationManager.cancel(count)
+        }
+        lastMissedCallNotificationId = notifMissedIdStart
     }
 }

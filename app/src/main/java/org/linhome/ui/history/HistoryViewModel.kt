@@ -25,6 +25,7 @@ import androidx.lifecycle.ViewModel
 import org.linhome.LinhomeApplication
 import org.linhome.linphonecore.extensions.callLogsWithNonEmptyCallId
 import org.linhome.linphonecore.extensions.historyEvent
+import org.linhome.notifications.NotificationsManager
 import org.linhome.store.HistoryEventStore
 import org.linhome.store.StorageManager
 import org.linphone.core.CallLog
@@ -91,6 +92,8 @@ class HistoryViewModel : ViewModel() {
             it.historyEvent().viewedByUser = true
             it.historyEvent().persist()
         }
+        // Clean also missed call notifications
+        LinhomeApplication.coreContext.notificationsManager.cleanMissedCalls()
     }
 }
 
