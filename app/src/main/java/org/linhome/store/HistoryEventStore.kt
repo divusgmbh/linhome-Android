@@ -23,6 +23,7 @@ package org.linhome.store
 import androidx.lifecycle.MutableLiveData
 import org.linhome.LinhomeApplication
 import org.linhome.entities.HistoryEvent
+import org.linhome.linphonecore.CorePreferences
 import org.linhome.store.StorageManager.historyEventsXml
 import org.linphone.core.Config
 import org.linhome.linphonecore.extensions.historyEvent
@@ -70,7 +71,11 @@ object HistoryEventStore {
                     historyEventsConfig.getBool(it, "viewed_by_user", false),
                     mediaFile,
                     historyEventsConfig.getString(it, "media_thumbnail_file_name", null)!!,
-                    fileHasVideo(historyEventsConfig.getString(it, "media_file_name", null)!!),
+                    if(LinhomeApplication.corePreferences.forceNoVideo) {
+                                    false
+                                }else{
+                                    fileHasVideo(historyEventsConfig.getString(it, "media_file_name", null)!!)
+                                },
                     historyEventsConfig.getBool(it, "forced_missed", false)!!
                 // WORKAROUND SU
                 /*historyEventsConfig.getBool(it, "has_video", false) // original code*/
@@ -108,7 +113,11 @@ object HistoryEventStore {
             // WORKAROUND SU:
             // Check stored file for really find out if it contains video
             // linphone sdk may store hasVideo wrong
-            entry.hasVideo = fileHasVideo(entry.mediaFileName)
+            entry.hasVideo = if(LinhomeApplication.corePreferences.forceNoVideo) {
+                false
+            }else{
+                fileHasVideo(entry.mediaFileName)
+            }
             // WORKAROUND SU
             historyEvents.put(it, entry)
             sync()
