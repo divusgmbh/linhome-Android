@@ -22,6 +22,7 @@ package org.linhome.entities
 
 import android.os.Parcelable
 import kotlinx.android.parcel.Parcelize
+import org.linhome.LinhomeApplication
 import org.linhome.store.HistoryEventStore
 import org.linhome.store.StorageManager
 import org.linhome.utils.extensions.existsAndIsNotEmpty
@@ -54,8 +55,12 @@ data class HistoryEvent(
         }
 
     fun hasMedia(): Boolean {
-        val hasVideo = media.let {
-            it.existsAndIsNotEmpty()
+        val hasVideo = if (LinhomeApplication.corePreferences.forceNoVideo) {
+            false
+        } else {
+            media.let {
+                it.existsAndIsNotEmpty()
+            }
         }
         val hasThumbnail = mediaThumbnail.let {
             it.existsAndIsNotEmpty()
