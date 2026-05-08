@@ -39,7 +39,8 @@ data class HistoryEvent(
         StorageManager.callsRecordingsDir,
         "${id}.jpg"
     ).absolutePath,
-    var hasVideo: Boolean = false
+    var hasVideo: Boolean = false,
+    var forcedMissed: Boolean = false
 ) : Parcelable {
 
     val media: File

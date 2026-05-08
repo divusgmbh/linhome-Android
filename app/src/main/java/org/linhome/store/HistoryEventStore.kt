@@ -70,7 +70,8 @@ object HistoryEventStore {
                     historyEventsConfig.getBool(it, "viewed_by_user", false),
                     mediaFile,
                     historyEventsConfig.getString(it, "media_thumbnail_file_name", null)!!,
-                    fileHasVideo(historyEventsConfig.getString(it, "media_file_name", null)!!)
+                    fileHasVideo(historyEventsConfig.getString(it, "media_file_name", null)!!),
+                    historyEventsConfig.getBool(it, "forced_missed", false)!!
                 // WORKAROUND SU
                 /*historyEventsConfig.getBool(it, "has_video", false) // original code*/
                 )
@@ -97,6 +98,7 @@ object HistoryEventStore {
             )
             historyEventsConfig.setString(entry.value.id, "call_id", entry.value.callId)
             historyEventsConfig.setBool(entry.value.id, "has_video", entry.value.hasVideo)
+            historyEventsConfig.setBool(entry.value.id, "forced_missed", entry.value.forcedMissed)
         }
         historyEventsXml.writeText(historyEventsConfig.dumpAsXml())
     }

@@ -24,6 +24,7 @@ import org.linhome.LinhomeApplication.Companion.coreContext
 import org.linhome.LinhomeApplication.Companion.corePreferences
 import org.linhome.store.HistoryEventStore
 import org.linphone.core.AudioDevice
+import org.linphone.core.Call
 import org.linphone.core.CallLog
 import org.linphone.core.Core
 import org.linphone.core.ProxyConfig
@@ -77,6 +78,15 @@ fun Core.callLogsWithNonEmptyCallId(): ArrayList<CallLog> {
 
 
 fun Core.missedCount(): Int {
+    var count = 0
+    coreContext.core.callLogsWithNonEmptyCallId().forEach {
+        if (it.isNew() && (it.status == Call.Status.Missed || it.historyEvent().forcedMissed))
+            count++
+    }
+    return count
+}
+
+fun Core.unreadCount(): Int {
     var count = 0
     coreContext.core.callLogsWithNonEmptyCallId().forEach {
         if (it.isNew())

@@ -24,6 +24,7 @@ import androidx.lifecycle.MutableLiveData
 import org.linhome.customisation.Texts
 import org.linhome.entities.Device
 import org.linhome.entities.HistoryEvent
+import org.linhome.linphonecore.extensions.historyEvent
 import org.linhome.linphonecore.extensions.isNew
 import org.linhome.store.DeviceStore
 import org.linhome.store.HistoryEventStore
@@ -61,6 +62,8 @@ class HistoryEventsViewModel(
 
 
     fun callTypeIcon(): String {
+        if(callLog.historyEvent().forcedMissed)
+            return "icons/missed"
         return when (callLog.status) {
             Call.Status.Missed -> "icons/missed"
             Call.Status.Declined, Call.Status.DeclinedElsewhere -> "icons/declined"
@@ -77,15 +80,19 @@ class HistoryEventsViewModel(
     fun callTypeAndDate(): String {
         val simpleDateFormat = SimpleDateFormat(historyTimePattern, Locale.getDefault())
         val callTime = simpleDateFormat.format(Date(callLog.startDate * 1000))
-        val typeText = when (callLog.status) {
-            Call.Status.Missed -> "history_list_call_type_missed"
-            Call.Status.Declined, Call.Status.DeclinedElsewhere -> "history_list_call_type_declined"
-            Call.Status.Aborted, Call.Status.EarlyAborted -> "history_list_call_type_aborted"
-            Call.Status.Success, Call.Status.AcceptedElsewhere -> {
-                if (callLog.dir == Call.Dir.Incoming)
-                    "history_list_call_type_accepted"
-                else
-                    "history_list_call_type_called"
+        val typeText = if(callLog.historyEvent().forcedMissed){
+            "history_list_call_type_missed"
+        }else {
+            when (callLog.status) {
+                Call.Status.Missed -> "history_list_call_type_missed"
+                Call.Status.Declined, Call.Status.DeclinedElsewhere -> "history_list_call_type_declined"
+                Call.Status.Aborted, Call.Status.EarlyAborted -> "history_list_call_type_aborted"
+                Call.Status.Success, Call.Status.AcceptedElsewhere -> {
+                    if (callLog.dir == Call.Dir.Incoming)
+                        "history_list_call_type_accepted"
+                    else
+                        "history_list_call_type_called"
+                }
             }
         }
         return Texts.get(
