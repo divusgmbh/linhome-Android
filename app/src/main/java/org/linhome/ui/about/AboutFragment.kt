@@ -46,8 +46,10 @@ class AboutFragment : Fragment() {
             .loadLabel(requireContext().packageManager).toString()
         val appVersion: String = BuildConfig.VERSION_NAME
         val appVersionCode: Int = BuildConfig.VERSION_CODE
-        val appGitVersion: String = BuildConfig.GIT_VERSION
-        binding.appversion.text = appName + " " + appVersion +" ("+appVersionCode+")\n"+appGitVersion.replace(".","\n")
+        val buildInfoGitBranch: String = BuildConfig.BUILDINFO_GIT_BRANCH
+        val buildInfoGitCommit: String = BuildConfig.BUILDINFO_GIT_COMMIT
+        val buildInfoTimestamp: String = BuildConfig.BUILDINFO_TIMESTAMP
+        binding.appversion.text = appName + " " + appVersion +" ("+appVersionCode+")\n"+buildInfoGitBranch+"\n"+buildInfoGitCommit+"\n"+buildInfoTimestamp
 
 
         binding.licence.setOnClickListener {

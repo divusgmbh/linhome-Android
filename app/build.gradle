@@ -12,12 +12,22 @@ plugins {
 }
 
 // Add git version information at build time
-def gitVersion = { ->
+def buildInfoGitBranch = { ->
     try {
         def branch = ["git", "rev-parse", "--abbrev-ref", "HEAD"].execute().text.trim()
+        return "${branch}"
+    } catch (ignored) { return "unknown" }
+}()
+def buildInfoGitCommit = { ->
+    try {
         def commit = ["git", "rev-parse", "--short=8", "HEAD"].execute().text.trim()
+        return "${commit}"
+    } catch (ignored) { return "unknown" }
+}()
+def buildInfoTimestamp = { ->
+    try {
         def time   = ["date", "+%Y-%m-%d %H:%M:%S"].execute().text.trim()
-        return "${branch}.${commit}.${time}"
+        return "${time}"
     } catch (ignored) { return "unknown" }
 }()
 
@@ -52,7 +62,9 @@ android {
         versionCode 76
         versionName "1.4.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField "String", "GIT_VERSION", "\"${gitVersion}\""
+        buildConfigField "String", "BUILDINFO_GIT_BRANCH", "\"${buildInfoGitBranch}\""
+        buildConfigField "String", "BUILDINFO_GIT_COMMIT", "\"${buildInfoGitCommit}\""
+        buildConfigField "String", "BUILDINFO_TIMESTAMP",  "\"${buildInfoTimestamp}\""
     }
 
     applicationVariants.all { variant ->
