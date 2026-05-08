@@ -54,7 +54,6 @@ fun CallLog.isNew(): Boolean {
     return historyEvent().let {
         dir == Call.Dir.Incoming && setOf(
             Call.Status.Missed,
-            Call.Status.Declined,
             Call.Status.DeclinedElsewhere
         ).contains(status) && !it.viewedByUser
     }
