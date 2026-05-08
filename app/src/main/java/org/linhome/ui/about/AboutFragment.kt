@@ -30,6 +30,7 @@ import androidx.fragment.app.Fragment
 import org.linhome.LinhomeApplication
 import org.linhome.customisation.Texts
 import org.linhome.databinding.FragmentAboutBinding
+import org.linhome.BuildConfig
 
 class AboutFragment : Fragment() {
 
@@ -40,6 +41,13 @@ class AboutFragment : Fragment() {
     ): View? {
         val binding = FragmentAboutBinding.inflate(inflater, container, false)
         binding.coreContext = LinhomeApplication.coreContext
+
+        val appName = requireContext().applicationInfo
+            .loadLabel(requireContext().packageManager).toString()
+        val appVersion: String = BuildConfig.VERSION_NAME
+        val appVersionCode: Int = BuildConfig.VERSION_CODE
+        val appGitVersion: String = BuildConfig.GIT_VERSION
+        binding.appversion.text = appName + " " + appVersion +" ("+appVersionCode+")\n"+appGitVersion.replace(".","\n")
 
 
         binding.licence.setOnClickListener {

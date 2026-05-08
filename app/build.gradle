@@ -11,6 +11,16 @@ plugins {
     id 'com.google.firebase.crashlytics'
 }
 
+// Add git version information at build time
+def gitVersion = { ->
+    try {
+        def branch = ["git", "rev-parse", "--abbrev-ref", "HEAD"].execute().text.trim()
+        def commit = ["git", "rev-parse", "--short=8", "HEAD"].execute().text.trim()
+        def time   = ["date", "+%Y-%m-%d %H:%M:%S"].execute().text.trim()
+        return "${branch}.${commit}.${time}"
+    } catch (ignored) { return "unknown" }
+}()
+
 tasks.register("zipTheme", Zip) {
     println("Zipping theme")
     from("../linhome-shared-themes/")
@@ -25,69 +35,8 @@ tasks.register("zipTheme", Zip) {
     destinationDirectory.set(file("src/main/assets/"))
 }
 
-
-
-// a custom task type with ExecOperations injected
-abstract class GitVersionTask extends DefaultTask {
-    @Inject
-    abstract ExecOperations getExecOperations()
-
-    @TaskAction
-    void run() {
-        def gitVersion = ""
-        // def gitVersionStream = new ByteArrayOutputStream()
-        // def gitCommitsCount = new ByteArrayOutputStream()
-        // def gitCommitHash = new ByteArrayOutputStream()
-        def gitBranch = new ByteArrayOutputStream()
-        def gitCommit = new ByteArrayOutputStream()
-        def gitBuildTime = new ByteArrayOutputStream()
-
-        try {
-            getExecOperations().exec {
-                // commandLine "git", "describe", "--abbrev=0"
-                // standardOutput = gitVersionStream
-                commandLine "git", "rev-parse", "--abbrev-ref", "HEAD"
-                standardOutput = gitBranch
-            }
-            getExecOperations().exec {
-                // commandLine "git", "rev-list", gitVersionStream.toString().trim() + "..HEAD", "--count"
-                // standardOutput = gitCommitsCount
-                commandLine "git", "rev-parse", "--short=8", "HEAD"
-                standardOutput = gitCommit
-            }
-            getExecOperations().exec {
-                // commandLine "git", "rev-parse", "--short", "HEAD"
-                // standardOutput = gitCommit
-                commandLine "date", "+\"%Y%m%d%H%M%S\""
-                standardOutput = gitBuildTime
-            }
-
-            // if (gitCommitsCount.toString().toInteger() == 0) {
-            //     gitVersion = gitVersionStream.toString().trim()
-            // } else {
-            //     gitVersion = gitVersionStream.toString().trim() + "." +
-            //             gitCommitsCount.toString().trim() + "+" +
-            //             gitCommitHash.toString().trim()
-            // }
-            gitVersion = gitBranch.toString().trim() + "." +
-                    gitCommit.toString().trim() + "." +
-                    gitBuildTime.toString().trim()
-            println("Git version: " + gitVersion)
-        } catch (ignored) {
-            println("Git not found")
-        }
-        project.version = gitVersion
-    }
-}
-
-tasks.register("getGitVersion", GitVersionTask)
-tasks.named("preBuild").configure {
-    dependsOn(tasks.named("getGitVersion"))
-}
-
 tasks.named("preBuild").configure {
     dependsOn(tasks.named("zipTheme"))
-    dependsOn(tasks.named("getGitVersion"))
 }
 
 def crashlyticsForNdkEnabled = new File(projectDir.absolutePath + '/google-services.json').exists() &&
@@ -103,6 +52,7 @@ android {
         versionCode 76
         versionName "1.4.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField "String", "GIT_VERSION", "\"${gitVersion}\""
     }
 
     applicationVariants.all { variant ->
