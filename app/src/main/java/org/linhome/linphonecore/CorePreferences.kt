@@ -264,6 +264,9 @@ class CorePreferences constructor(private val context: Context) {
                 (if (value != null) epoch else 0).toInt()
             )
         }
+
     // Force video disabled always also if migrating video recordings from older versions
     val forceNoVideo: Boolean = true
+    // Notification for each missed call or single summary notification for generic missed calls
+    val notifyEachMissedCall: Boolean = true
 }

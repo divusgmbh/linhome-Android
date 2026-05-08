@@ -635,15 +635,26 @@ class NotificationsManager(private val context: Context) {
     @RequiresPermission("android.permission.POST_NOTIFICATIONS")
     fun displayMissedCallNotification(call: Call) {
         val missedCallCount: Int = call.core.missedCallsCount
-        val body: String
-        if (missedCallCount > 1) {
-            body = Texts.get("notif_missed_calls", missedCallCount.toString())
-            Log.i("[Notifications Manager] Updating missed calls notification count to $missedCallCount")
-        } else {
+        var body: String = ""
+        var notifId = lastNotificationId++
+        var title = Texts.get("notif_missed_call_singular_title")
+        if(LinhomeApplication.corePreferences.notifyEachMissedCall){
             val name = DeviceStore.findDeviceByAddress(call.remoteAddress)?.name
                 ?: call.remoteAddress.username
             body = Texts.get("notif_missed_call", name?:"device")
             Log.i("[Notifications Manager] Creating missed call notification")
+        }else{
+            if (missedCallCount > 1) {
+                body = Texts.get("notif_missed_calls", missedCallCount.toString())
+                Log.i("[Notifications Manager] Updating missed calls notification count to $missedCallCount")
+            } else {
+                val name = DeviceStore.findDeviceByAddress(call.remoteAddress)?.name
+                    ?: call.remoteAddress.username
+                body = Texts.get("notif_missed_call", name?:"device")
+                Log.i("[Notifications Manager] Creating missed call notification")
+            }
+            title = Texts.get("notif_missed_call_title")
+            notifId = MISSED_CALLS_NOTIF_ID
         }
 
         val pendingIntent = NavDeepLinkBuilder(context)
@@ -655,7 +666,7 @@ class NotificationsManager(private val context: Context) {
         val notification = NotificationCompat.Builder(
             context, Texts.get("notification_channel_incoming_call_id")
         )
-            .setContentTitle(Texts.get("notif_missed_call_title"))
+            .setContentTitle(title)
             .setContentText(body)
             .setSmallIcon(R.drawable.notification_missed)
             .setAutoCancel(true)
@@ -669,12 +680,32 @@ class NotificationsManager(private val context: Context) {
             .setNumber(coreContext.core.missedCount())
             .setColor(Theme.getColor("color_s"))
             .build()
-        notify(MISSED_CALLS_NOTIF_ID, notification)
+        notify(notifId, notification)
     }
 
     @RequiresPermission("android.permission.POST_NOTIFICATIONS")
     fun displayElsewhere(call: Call, declined: Boolean) {
-
+        val missedCallCount: Int = call.core.missedCallsCount
+        var body: String = ""
+        var notifId = lastNotificationId++
+        var title = Texts.get(if (declined) "notif_declined_elsewhere_call_title" else "notif_accepted_elsewhere_call_title")
+        if(LinhomeApplication.corePreferences.notifyEachMissedCall){
+            val name = DeviceStore.findDeviceByAddress(call.remoteAddress)?.name
+                ?: call.remoteAddress.username
+            body = Texts.get("notif_missed_call", name?:"device")
+            Log.i("[Notifications Manager] Creating missed call notification")
+        }else{
+            if (missedCallCount > 1) {
+                body = Texts.get("notif_missed_calls", missedCallCount.toString())
+                Log.i("[Notifications Manager] Updating missed calls notification count to $missedCallCount")
+            } else {
+                val name = DeviceStore.findDeviceByAddress(call.remoteAddress)?.name
+                    ?: call.remoteAddress.username
+                body = Texts.get("notif_missed_call", name?:"device")
+                Log.i("[Notifications Manager] Creating missed call notification")
+            }
+            notifId = MISSED_CALLS_NOTIF_ID
+        }
         val pendingIntent = NavDeepLinkBuilder(context)
             .setComponentName(MainActivity::class.java)
             .setGraph(R.navigation.fragments_graph)
@@ -684,7 +715,8 @@ class NotificationsManager(private val context: Context) {
         val notification = NotificationCompat.Builder(
             context, Texts.get("notification_channel_incoming_call_id")
         )
-            .setContentTitle(Texts.get(if (declined) "notif_declined_elsewhere_call_title" else "notif_accepted_elsewhere_call_title"))
+            .setContentTitle(title)
+            .setContentText(body)
             .setSmallIcon((if (declined) R.drawable.notification_decline else R.drawable.notification_phone))
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
@@ -697,7 +729,7 @@ class NotificationsManager(private val context: Context) {
             .setNumber(coreContext.core.missedCount())
             .setColor(Theme.getColor("color_s"))
             .build()
-        notify(MISSED_CALLS_NOTIF_ID, notification)
+        notify(notifId, notification)
     }
 
     fun dismissMissedCallNotification() {
