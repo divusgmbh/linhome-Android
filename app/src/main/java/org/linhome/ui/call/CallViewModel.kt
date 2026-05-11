@@ -99,10 +99,12 @@ class CallViewModel(val call: Call) : ViewModel() {
                 videoContent.value = true
             }
             call?.callLog?.historyEvent()?.also { event ->
-                /*if (!event.hasVideo) {
-                    event.hasVideo = true
-                    event.persist()
-                }*/
+                if(!corePreferences.forceNoVideo) {
+                    if (!event.hasVideo) {
+                        event.hasVideo = true
+                        event.persist()
+                    }
+                }
                 if (!event.mediaThumbnail.existsAndIsNotEmpty()) {
                     if(!call.snapshotTaken) {
                         val file = event.mediaThumbnail
@@ -126,7 +128,7 @@ class CallViewModel(val call: Call) : ViewModel() {
 
     init {
         historyEvent = call.callLog.historyEvent()
-        videoContent.value = historyEvent.hasVideo
+        videoContent.value = call.videoStats != null
         call.addListener(callListener)
         fireActionsOnCallStateChanged(call.state)
         if (!videoContent.value!!) {

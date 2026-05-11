@@ -44,7 +44,9 @@ import org.linhome.databinding.ActivityMainBinding
 import org.linhome.entities.LinhomeAccount
 import org.linhome.linphonecore.extensions.extendedAccept
 import org.linhome.store.StorageManager
+import org.linhome.ui.call.CallIncomingActivity
 import org.linhome.ui.tabbar.TabbarViewModel
+import org.linphone.core.Call
 import org.linhome.ui.toolbar.ToobarButtonClickedListener
 import org.linhome.ui.toolbar.ToolbarViewModel
 import org.linhome.utils.DialogUtil
@@ -161,6 +163,8 @@ class MainActivity : GenericActivity() {
         if (intent.extras?.getBoolean("acceptCall") == true) {
             LinhomeApplication.coreContext.core.currentCall?.extendedAccept()
         }
+
+        redirectToIncomingCallIfNeeded()
 
         if (!StorageManager.storePrivately) {
             externalStorageWithPermissionCheck()
@@ -390,6 +394,19 @@ class MainActivity : GenericActivity() {
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             startActivity(intent)
             finish()
+            return
+        }
+        redirectToIncomingCallIfNeeded()
+    }
+
+    private fun redirectToIncomingCallIfNeeded() {
+        val incomingCall = LinhomeApplication.coreContext.core.calls.firstOrNull {
+            it.state == Call.State.IncomingReceived || it.state == Call.State.IncomingEarlyMedia
+        }
+        if (incomingCall != null) {
+            val intent = Intent(this, CallIncomingActivity::class.java)
+            intent.putExtra("callId", incomingCall.callLog.callId)
+            startActivity(intent)
         }
     }
 
