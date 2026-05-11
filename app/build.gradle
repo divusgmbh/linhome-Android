@@ -59,7 +59,7 @@ android {
         applicationId "eu.divus.videophone_mobile"
         minSdkVersion 23
         targetSdkVersion 36
-        versionCode 77
+        versionCode 78
         versionName "1.4.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField "String", "BUILDINFO_GIT_BRANCH", "\"${buildInfoGitBranch}\""

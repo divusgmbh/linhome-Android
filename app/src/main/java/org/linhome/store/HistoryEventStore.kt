@@ -313,20 +313,16 @@ object HistoryEventStore {
                 return
 
             }
-            val db = SQLiteDatabase.openDatabase(dbFileMerge.absolutePath, null, SQLiteDatabase.OPEN_READWRITE)
+            /*val db = SQLiteDatabase.openDatabase(dbFileMerge.absolutePath, null, SQLiteDatabase.OPEN_READWRITE)
             try {
                 db.beginTransaction()
-                // Old SDK stored direction as Incoming=1/Outgoing=0.
-                // SDK 5.4+ expects Incoming=0/Outgoing=1. Flip all values via a temporary value (2).
-                db.execSQL("UPDATE call_history SET direction = 2 WHERE direction = 0")
-                db.execSQL("UPDATE call_history SET direction = 0 WHERE direction = 1")
-                db.execSQL("UPDATE call_history SET direction = 1 WHERE direction = 2")
+
                 db.setTransactionSuccessful()
-                Log.i("[HistoryEventStore] call_history pre-migration v5.4+: direction values flipped successfully")
+                Log.i("[HistoryEventStore] call_history pre-migration v5.4+: ")
             } finally {
                 db.endTransaction()
                 db.close()
-            }
+            }*/
             prefs.edit().putBoolean("premerge_callhistory_v54_done", true).apply()
         } catch (e: Exception) {
             Log.w("[HistoryEventStore] call_history pre-migration v5.4+ failed: ${e.message}")
