@@ -30,6 +30,7 @@ import org.linhome.linphonecore.extensions.historyEvent
 import org.linphone.core.Factory
 import java.io.File
 import org.linphone.core.tools.Log
+import android.database.sqlite.SQLiteDatabase
 
 import java.io.RandomAccessFile
 import kotlin.collections.remove
@@ -189,6 +190,11 @@ object HistoryEventStore {
     }
 
     fun rotateRecordings(cleanup: Boolean) {
+        val prefs = LinhomeApplication.instance.getSharedPreferences("linphone_migration_prefs", android.content.Context.MODE_PRIVATE)
+        if (!prefs.getBoolean("premerge_callhistory_v54_done", false)) {
+            org.linphone.core.tools.Log.i("[HistoryEventStore] skip rotating files, due to missing migration of call history")
+            return
+        }
         org.linphone.core.tools.Log.i("[HistoryEventStore] rotating files now")
         val max = 20
         val directory = StorageManager.callsRecordingsDir
@@ -282,6 +288,48 @@ object HistoryEventStore {
             }
         } finally {
             file.close()
+        }
+    }
+
+    fun preMigrateCallHistoryDbv54() {
+        val ctx = LinhomeApplication.instance
+        val prefs = ctx.getSharedPreferences("linphone_migration_prefs", android.content.Context.MODE_PRIVATE)
+        if (prefs.getBoolean("premerge_callhistory_v54_done", false)) {
+            Log.i("[HistoryEventStore] call_history pre-migration v5.4+ already done, skipping")
+            return
+        }
+        val dbFile = File(ctx.filesDir, "call-history.db")
+        if (!dbFile.exists()) {
+            Log.i("[HistoryEventStore] call_history pre-migration v5.4+: DB not found, skipping")
+            prefs.edit().putBoolean("premerge_callhistory_v54_done", true).apply()
+            return
+        }
+        try {
+            val dbFileMerge = File(ctx.filesDir, "call_logs.db")
+            Log.i("[HistoryEventStore] call_history pre-migration v5.4+: copy old file "+dbFile.absolutePath+", to new file: "+dbFileMerge.absolutePath)
+            dbFile.copyTo(dbFileMerge, overwrite = true)
+            if (!dbFileMerge.exists()) {
+                Log.i("[HistoryEventStore] call_history pre-migration v5.4+: copy file failed, aborting here")
+                return
+
+            }
+            val db = SQLiteDatabase.openDatabase(dbFileMerge.absolutePath, null, SQLiteDatabase.OPEN_READWRITE)
+            try {
+                db.beginTransaction()
+                // Old SDK stored direction as Incoming=1/Outgoing=0.
+                // SDK 5.4+ expects Incoming=0/Outgoing=1. Flip all values via a temporary value (2).
+                db.execSQL("UPDATE call_history SET direction = 2 WHERE direction = 0")
+                db.execSQL("UPDATE call_history SET direction = 0 WHERE direction = 1")
+                db.execSQL("UPDATE call_history SET direction = 1 WHERE direction = 2")
+                db.setTransactionSuccessful()
+                Log.i("[HistoryEventStore] call_history pre-migration v5.4+: direction values flipped successfully")
+            } finally {
+                db.endTransaction()
+                db.close()
+            }
+            prefs.edit().putBoolean("premerge_callhistory_v54_done", true).apply()
+        } catch (e: Exception) {
+            Log.w("[HistoryEventStore] call_history pre-migration v5.4+ failed: ${e.message}")
         }
     }
 }

@@ -65,7 +65,7 @@ class LinhomeApplication : Application() {
                 corePreferences.configPath,
                 corePreferences.factoryConfigPath
             )
-            config.setString("storage","call_logs_db_uri",context.filesDir.absolutePath + "/linphone-log-history.db")
+            config.setString("storage","call_logs_db_uri",context.filesDir.absolutePath + "/call_logs.db")
             corePreferences.config = config
             Factory.instance().setDebugMode(corePreferences.debugLogs, Texts.appName)
             Log.i("[Application] Core context created")
